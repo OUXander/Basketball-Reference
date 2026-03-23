@@ -1,0 +1,35 @@
+body {
+	background-color: black;
+	color: white;
+	font-family: Verdana, sans-serif;
+}
+
+.header {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.logo {
+	padding: 3vw;
+	width: 60vw;
+}
+
+.search {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	text-align: center;
+}
+
+.searchBar {
+	border-radius: 35px;
+	width: 60vw;
+	height: 50px;
+	border: none;
+	background: dimgrey;
+	color: white;
+	padding-left: 15px;
+	font-size: 17px
+}
