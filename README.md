@@ -14,5 +14,4 @@ The website is not hosted publicly, however it can be hosted locally with Python
 - Implement remaining webpages.
 - Implement functionality for the search bar.
 - Implement handler for statistics API.
--Add button to toggle collapsable sidebar.
-
+- Add button to toggle collapsable sidebar.
