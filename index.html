@@ -5,13 +5,17 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Basketball Reference Redesign</title>
 	<link rel="stylesheet" href="css/style.css">
+	<script type="text/javascript" src="js/sidebar.js"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 
 <body>
 	<div class="app">
 
-		<aside class="sidebar">
+		<aside id="sidebar">
+			<button id="sidebar-close" onclick="closeSidebar()"><i class="fa fa-close"></i></button>  
+
 			<div class="sidebar-header">
 				<h2>Explore</h2>
 			</div>
@@ -28,6 +32,7 @@
 		</aside>
 
 		<main class="main-content">
+			<button id="sidebar-open" onclick="openSidebar()"><i class="fa fa-bars"></i></button>  
 			<div class="header">
 				<img src="img/logo.png" alt="Basketball Reference" class="logo">
 			</div>

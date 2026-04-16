@@ -16,6 +16,25 @@ body {
 	min-height: 100vh;
 }
 
+#sidebar-open {
+	visibility: hidden;
+	background-color: transparent;
+	border: none;
+	color: white;
+	cursor: pointer;
+	font-size: 20px;
+	align-self: flex-start;
+}
+
+#sidebar-close {
+	background-color: transparent;
+	border: none;
+	color: white;
+	cursor: pointer;
+	font-size: 20px;
+	float: right;
+}
+
 .sidebar {
 	width: 260px;
 	background-color: #171717;
@@ -177,4 +196,5 @@ body {
 		font-size: 20px;
 		height: 58px;
 	}
+}
 }
