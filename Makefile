@@ -1,5 +1,5 @@
 all: serve
 
-# use python as basic sever
+# use Gunicorn as proper Flask app server
 serve:
-	python3 -m http.server
+	gunicorn --chdir app/ main:app
