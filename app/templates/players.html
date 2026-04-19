@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Players</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="app">
+    <main class="main-content">
+
+        <div class="search-section">
+            <h1>Players</h1>
+
+            <!-- 🔤 Alphabet Index -->
+            <div class="alphabet">
+                {% for letter in alphabet %}
+                    <a href="{{ url_for('players', letter=letter) }}"
+                       class="{% if letter == selected_letter %}active{% endif %}">
+                        {{ letter }}
+                    </a>
+                {% endfor %}
+            </div>
+
+            <!-- 👥 Player List -->
+            <div class="player-list">
+                {% if players %}
+                    {% for player in players %}
+                        <div class="player-item">
+                            {{ player }}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No players found.</p>
+                {% endif %}
+            </div>
+
+            <a href="{{ url_for('index') }}" class="back-link">← Back</a>
+
+        </div>
+
+    </main>
+</div>
+
+</body>
+</html>
