@@ -1,4 +1,8 @@
-from flask import Flask, render_template, request
+from nba_api.stats.static import players
+from nba_api.stats.static import teams
+from nba_api.stats.endpoints import playercareerstats
+from nba_api.stats.endpoints import teaminfocommon
+from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import os
 import warnings
@@ -64,7 +68,7 @@ def index():
 # route to players
 @app.route("/players")
 @app.route("/players/<letter>")
-def players(letter="A"):
+def playersPage(letter="A"):
     letter = letter.upper()
 
     filtered_players = [
@@ -83,7 +87,7 @@ def players(letter="A"):
 # route to teams
 @app.route("/teams")
 @app.route("/teams/<letter>")
-def teams(letter="A"):
+def teamsPage(letter="A"):
     letter = letter.upper()
 
     filtered_teams = [
@@ -126,6 +130,53 @@ def search():
         player_results=player_results,
         team_results=team_results
     )
+
+# returns list of player names
+@app.route("/api/players", methods=["GET"])
+def listPlayers():
+    allPlayers = players.get_players()
+    return jsonify([player["full_name"] for player in allPlayers])
+
+# returns list of team names
+@app.route("/api/teams", methods=["GET"])
+def listTeams():
+    allTeams = teams.get_teams()
+    return jsonify([team["full_name"] for team in allTeams])
+
+# returns data for given player by full player name
+@app.route("/api/player/<name>", methods=["GET"])
+def getPlayerData(name):
+
+    # attempt to look up player and continue if names match
+    player = players.find_players_by_full_name(name)[0]
+    if player["full_name"].lower() == name.lower():
+        career = playercareerstats.PlayerCareerStats(player["id"])
+        return jsonify(career.get_dict()) # return player career data
+    
+    # return none if player not found 
+    else: 
+        return None
+
+# returns data for given team and continue if names match
+@app.route("/api/team/<name>", methods=["GET"])
+def getTeamData(name):
+    team = teams.find_teams_by_full_name(name)[0]
+    if team["full_name"].lower() == name.lower():
+        info = teaminfocommon.TeamInfoCommon(team["id"])
+        return jsonify(info.get_dict())
+    else:
+        return None
+
+# search players and teams using a given query and show top results
+@app.route("/api/search/<query>", methods=["GET"])
+def getSearchSuggestions(query):
+    
+    # search players and teams using query
+    searchPlayers = players.find_players_by_full_name(query)
+    searchTeams = teams.find_teams_by_full_name(query)
+
+    # return up to five results from each category
+    return jsonify([player["full_name"] for player in searchPlayers[:5]] + [team["full_name"] for team in searchTeams[:5]])
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
