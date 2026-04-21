@@ -1,14 +1,15 @@
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog
 from flask import Flask, render_template, request, jsonify
 from urllib.parse import unquote
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # set up app
 app = Flask(__name__)
 
 player_stats_cache = {}
+game_log_cache = {}
 
 ALL_PLAYERS = players.get_players()
 
@@ -129,17 +130,47 @@ def playerPage(name):
                 if result_set.get("name") == "SeasonTotalsRegularSeason":
                     headers = result_set["headers"]
                     rows = result_set["rowSet"]
-
                     for row in rows:
                         season_stats.append(dict(zip(headers, row)))
                     break
 
         player_stats_cache[player_id] = season_stats
 
+    available_seasons = [s["SEASON_ID"] for s in season_stats]
+    default_season = available_seasons[-1] if available_seasons else get_current_season_string()
+    selected_season = request.args.get("season", default_season)
+    if selected_season not in available_seasons and available_seasons:
+        selected_season = default_season
+
+    cache_key = (player_id, selected_season)
+    if cache_key in game_log_cache:
+        game_log = game_log_cache[cache_key]
+    else:
+        try:
+            log = playergamelog.PlayerGameLog(
+                player_id=player_id,
+                season=selected_season,
+                season_type_all_star="Regular Season"
+            )
+            log_data = log.get_dict()
+            game_log = []
+            for result_set in log_data.get("resultSets", []):
+                if result_set.get("name") == "PlayerGameLog":
+                    headers = result_set["headers"]
+                    for row in result_set["rowSet"]:
+                        game_log.append(dict(zip(headers, row)))
+                    break
+        except Exception:
+            game_log = []
+        game_log_cache[cache_key] = game_log
+
     return render_template(
         "player.html",
         player_name=player["full_name"],
-        season_stats=season_stats
+        season_stats=season_stats,
+        game_log=game_log,
+        selected_season=selected_season,
+        available_seasons=available_seasons
     )
 
 
@@ -288,6 +319,107 @@ def leadersPage():
         season=current_season,
         leaders_data=leaders_data
     )
+
+# route to scores/stats page
+@app.route("/Scores")
+def statsPage():
+    date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
+
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        date_obj = datetime.now()
+        date_str = date_obj.strftime("%Y-%m-%d")
+
+    prev_date = (date_obj - timedelta(days=1)).strftime("%Y-%m-%d")
+    next_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    try:
+        board = scoreboardv2.ScoreboardV2(game_date=date_str, league_id="00", day_offset=0)
+        board_dict = board.get_dict()
+    except Exception:
+        return render_template("stats.html", games=[], date=date_str,
+                               prev_date=prev_date, next_date=next_date, error="Could not load games.")
+
+    games_header = {}
+    games_scores = {}
+
+    for result_set in board_dict.get("resultSets", []):
+        if result_set["name"] == "GameHeader":
+            headers = result_set["headers"]
+            for row in result_set["rowSet"]:
+                d = dict(zip(headers, row))
+                games_header[d["GAME_ID"]] = d
+        elif result_set["name"] == "LineScore":
+            headers = result_set["headers"]
+            for row in result_set["rowSet"]:
+                d = dict(zip(headers, row))
+                gid = d["GAME_ID"]
+                if gid not in games_scores:
+                    games_scores[gid] = []
+                games_scores[gid].append(d)
+
+    games = []
+    for game_id, header in games_header.items():
+        teams_data = games_scores.get(game_id, [])
+        away = teams_data[0] if len(teams_data) > 0 else {}
+        home = teams_data[1] if len(teams_data) > 1 else {}
+        games.append({
+            "game_id": game_id,
+            "status": header.get("GAME_STATUS_TEXT", "").strip(),
+            "away": away,
+            "home": home,
+        })
+
+    return render_template(
+        "stats.html",
+        games=games,
+        date=date_str,
+        prev_date=prev_date,
+        next_date=next_date
+    )
+
+# API: box score for a game
+@app.route("/api/boxscore/<game_id>")
+def boxscoreAPI(game_id):
+    try:
+        box = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
+        box_dict = box.get_dict()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    player_rows = []
+    for result_set in box_dict.get("resultSets", []):
+        if result_set["name"] == "PlayerStats":
+            headers = result_set["headers"]
+            for row in result_set["rowSet"]:
+                player_rows.append(dict(zip(headers, row)))
+            break
+
+    teams_map = {}
+    for p in player_rows:
+        abbr = p.get("TEAM_ABBREVIATION", "")
+        if abbr not in teams_map:
+            teams_map[abbr] = {
+                "abbreviation": abbr,
+                "city": p.get("TEAM_CITY", ""),
+                "players": []
+            }
+        teams_map[abbr]["players"].append({
+            "name": p.get("PLAYER_NAME", ""),
+            "position": p.get("START_POSITION", ""),
+            "min": p.get("MIN", ""),
+            "pts": p.get("PTS", 0),
+            "reb": p.get("REB", 0),
+            "ast": p.get("AST", 0),
+            "stl": p.get("STL", 0),
+            "blk": p.get("BLK", 0),
+            "fg": f"{p.get('FGM', 0)}-{p.get('FGA', 0)}",
+            "fg3": f"{p.get('FG3M', 0)}-{p.get('FG3A', 0)}",
+            "plus_minus": p.get("PLUS_MINUS", 0),
+        })
+
+    return jsonify(list(teams_map.values()))
 
 # returns list of player names
 @app.route("/api/players", methods=["GET"])
