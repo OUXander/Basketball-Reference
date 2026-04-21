@@ -308,6 +308,69 @@ body {
 	color: white;
 }
 
+.top-back {
+    align-self: flex-start;
+    margin-bottom: 16px;
+    font-size: 20px;
+    color: #9ca3af;
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.top-back:hover {
+    background-color: #1f1f1f;
+    color: white;
+}
+
+.player-link {
+    color: #e5e7eb;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+}
+
+.player-link:hover {
+    color: white;
+}
+
+.player-stats-block {
+    max-width: 1000px;
+    width: 100%;
+}
+
+.stats-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    background-color: #1d1d1d;
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #e5e7eb;
+    min-width: 900px;
+}
+
+.stats-table th,
+.stats-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #2a2a2a;
+    text-align: left;
+}
+
+.stats-table th {
+    color: #f3f4f6;
+    font-weight: 600;
+}
+
+.stats-table tr:last-child td {
+    border-bottom: none;
+}
+
 @media (max-width: 900px) {
 	.app {
 		flex-direction: column;

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ player_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="app">
+    <main class="main-content">
+        <div class="search-section">
+            <a href="{{ url_for('playersPage') }}" class="back-link top-back">← Back</a>
+
+            <h1>{{ player_name }}</h1>
+
+            {% if error %}
+                <p class="results-label">{{ error }}</p>
+            {% elif season_stats %}
+                <div class="results-block player-stats-block">
+                    <h2>Career Regular Season Stats by Year</h2>
+
+                    <div class="stats-table-wrapper">
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Season</th>
+                                    <th>Team</th>
+                                    <th>GP</th>
+                                    <th>MIN</th>
+                                    <th>PTS</th>
+                                    <th>REB</th>
+                                    <th>AST</th>
+                                    <th>STL</th>
+                                    <th>BLK</th>
+                                    <th>FG%</th>
+                                    <th>3P%</th>
+                                    <th>FT%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for season in season_stats %}
+                                    <tr>
+                                        <td>{{ season["SEASON_ID"] }}</td>
+                                        <td>{{ season["TEAM_ABBREVIATION"] }}</td>
+                                        <td>{{ season["GP"] }}</td>
+                                        <td>{{ season["MIN"] }}</td>
+                                        <td>{{ season["PTS"] }}</td>
+                                        <td>{{ season["REB"] }}</td>
+                                        <td>{{ season["AST"] }}</td>
+                                        <td>{{ season["STL"] }}</td>
+                                        <td>{{ season["BLK"] }}</td>
+                                        <td>{{ season["FG_PCT"] }}</td>
+                                        <td>{{ season["FG3_PCT"] }}</td>
+                                        <td>{{ season["FT_PCT"] }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <p class="results-label">No stats found.</p>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+</body>
+</html>
