@@ -10,12 +10,10 @@ The website is not hosted publicly, however it can be hosted locally with Python
 - Make (e.g. `sudo apt install make`)
 - Python (e.g. `sudo apt install python3`)
 - Flask (e.g. `sudo apt install python3-flask`)
-- Dotenv (e.g. `sudo apt install python3-dotenv`)
+- nba_api (e.g. `python -m pip install nba_api`)
 - Gunicorn (e.g. `sudo apt install gunicorn`)
 
-Next, an example .env file is found at `/.env.example` and must be copied to `.env` with your environment information filled in.
-
-Finally, make sure no other application is running on port 8000 then run `make` to launch the application. Once running, visit http://localhost:8000/.
+Next, make sure no other application is running on port 8000 then run `make` to launch the application. Once running, visit http://localhost:8000/.
 
 ## To-Do
 
