@@ -1,17 +1,11 @@
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders
 from flask import Flask, render_template, request, jsonify
-from dotenv import load_dotenv
 from urllib.parse import unquote
 import os
-import warnings
+from datetime import datetime
 
 # set up app
-load_dotenv()
-API_KEY = os.getenv("API_KEY")
-if API_KEY is None:
-    warnings.warn("No API key found, statistics will be missing", FutureWarning)
-
 app = Flask(__name__)
 
 player_stats_cache = {}
@@ -244,6 +238,18 @@ def getSearchSuggestions(query):
         [player["full_name"] for player in search_players[:5]] +
         [team["full_name"] for team in search_teams[:5]]
     )
+
+# return standings for current season
+@app.route("/api/standings", methods=["GET"])
+def getCurrentStandings():
+    standings = leaguestandings.LeagueStandings(league_id = "00", season = str(int(datetime.now().year) - 1) + "-" + datetime.now().strftime("%y"))
+    return jsonify(standings.get_dict())
+
+# return leaders for current season
+@app.route("/api/leaders", methods=["GET"])
+def getCurrentLeaders():
+    leaders = leagueleaders.LeagueLeaders(season = str(int(datetime.now().year) - 1) + "-" + datetime.now().strftime("%y"))
+    return jsonify(leaders.get_dict())
 
 
 if __name__ == "__main__":
