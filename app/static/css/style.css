@@ -371,6 +371,11 @@ body {
     border-bottom: none;
 }
 
+.standings-block {
+    max-width: 1000px;
+    width: 100%;
+}
+
 @media (max-width: 900px) {
 	.app {
 		flex-direction: column;

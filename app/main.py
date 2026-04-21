@@ -28,11 +28,52 @@ TEAM_LOOKUP = {
     for team in ALL_TEAMS
 }
 
+standings_cache = None
+standings_cache_season = None
+
+leaders_cache = None
+leaders_cache_season = None
+
 def get_all_player_names():
     return ALL_PLAYER_NAMES
 
 def get_all_team_names():
     return ALL_TEAM_NAMES
+
+def get_current_season_string():
+    return str(int(datetime.now().year) - 1) + "-" + datetime.now().strftime("%y")
+
+def get_leaders_for_category(stat_category):
+    leaders_data = leagueleaders.LeagueLeaders(
+        season=get_current_season_string(),
+        stat_category_abbreviation=stat_category,
+        per_mode48="PerGame",
+        scope="S",
+        season_type_all_star="Regular Season"
+    )
+
+    leaders_dict = leaders_data.get_dict()
+    leaders_rows = []
+
+    # LeagueLeaders often comes back as a single resultSet, not resultSets
+    if "resultSet" in leaders_dict:
+        headers = leaders_dict["resultSet"]["headers"]
+        rows = leaders_dict["resultSet"]["rowSet"]
+
+        for row in rows:
+            leaders_rows.append(dict(zip(headers, row)))
+
+    elif "resultSets" in leaders_dict:
+        for result_set in leaders_dict["resultSets"]:
+            if result_set.get("name") == "LeagueLeaders":
+                headers = result_set["headers"]
+                rows = result_set["rowSet"]
+
+                for row in rows:
+                    leaders_rows.append(dict(zip(headers, row)))
+                break
+
+    return leaders_rows[:10]
 
 # serve index page
 @app.route("/")
@@ -179,6 +220,74 @@ def search():
         team_results=team_results
     )
 
+# route to standings
+@app.route("/standings")
+def standingsPage():
+    global standings_cache, standings_cache_season
+
+    current_season = get_current_season_string()
+
+    if standings_cache is not None and standings_cache_season == current_season:
+        east_standings, west_standings = standings_cache
+    else:
+        standings_data = leaguestandings.LeagueStandings(
+            league_id="00",
+            season=current_season
+        )
+        standings_dict = standings_data.get_dict()
+
+        standings_rows = []
+        if "resultSets" in standings_dict:
+            for result_set in standings_dict["resultSets"]:
+                headers = result_set["headers"]
+                rows = result_set["rowSet"]
+
+                for row in rows:
+                    standings_rows.append(dict(zip(headers, row)))
+                break
+
+        east_standings = [team for team in standings_rows if team["Conference"] == "East"]
+        west_standings = [team for team in standings_rows if team["Conference"] == "West"]
+
+        east_standings.sort(key=lambda team: int(team["PlayoffRank"]))
+        west_standings.sort(key=lambda team: int(team["PlayoffRank"]))
+
+        standings_cache = (east_standings, west_standings)
+        standings_cache_season = current_season
+
+    return render_template(
+        "standings.html",
+        east_standings=east_standings,
+        west_standings=west_standings,
+        season=current_season
+    )
+
+# route to leaders
+@app.route("/leaders")
+def leadersPage():
+    global leaders_cache, leaders_cache_season
+
+    current_season = get_current_season_string()
+
+    if leaders_cache is not None and leaders_cache_season == current_season:
+        leaders_data = leaders_cache
+    else:
+        leaders_data = {
+            "points": get_leaders_for_category("PTS"),
+            "rebounds": get_leaders_for_category("REB"),
+            "assists": get_leaders_for_category("AST"),
+            "steals": get_leaders_for_category("STL"),
+            "blocks": get_leaders_for_category("BLK")
+        }
+
+        leaders_cache = leaders_data
+        leaders_cache_season = current_season
+
+    return render_template(
+        "leaders.html",
+        season=current_season,
+        leaders_data=leaders_data
+    )
 
 # returns list of player names
 @app.route("/api/players", methods=["GET"])
