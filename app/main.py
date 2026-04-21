@@ -1,9 +1,8 @@
-from nba_api.stats.static import players
-from nba_api.stats.static import teams
-from nba_api.stats.endpoints import playercareerstats
-from nba_api.stats.endpoints import teaminfocommon
+from nba_api.stats.static import players, teams
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
+from urllib.parse import unquote
 import os
 import warnings
 
@@ -15,64 +14,48 @@ if API_KEY is None:
 
 app = Flask(__name__)
 
-# Placeholder data
-ALL_PLAYERS = [
-    "LeBron James",
-    "Kobe Bryant",
-    "Stephen Curry",
-    "Kevin Durant",
-    "Nikola Jokic",
-    "Giannis Antetokounmpo",
-    "Kareem Abdul-Jabbar",
-    "Shaquille O'Neal"
-]
+player_stats_cache = {}
 
-ALL_TEAMS = [
-    "Atlanta Hawks",
-    "Boston Celtics",
-    "Brooklyn Nets",
-    "Charlotte Hornets",
-    "Chicago Bulls",
-    "Cleveland Cavaliers",
-    "Dallas Mavericks",
-    "Denver Nuggets",
-    "Detroit Pistons",
-    "Golden State Warriors",
-    "Houston Rockets",
-    "Indiana Pacers",
-    "Los Angeles Clippers",
-    "Los Angeles Lakers",
-    "Memphis Grizzlies",
-    "Miami Heat",
-    "Milwaukee Bucks",
-    "Minnesota Timberwolves",
-    "New Orleans Pelicans",
-    "New York Knicks",
-    "Oklahoma City Thunder",
-    "Orlando Magic",
-    "Philadelphia 76ers",
-    "Phoenix Suns",
-    "Portland Trail Blazers",
-    "Sacramento Kings",
-    "San Antonio Spurs",
-    "Toronto Raptors",
-    "Utah Jazz",
-    "Washington Wizards"
-]
+ALL_PLAYERS = players.get_players()
+
+ALL_PLAYER_NAMES = sorted(
+    [player["full_name"] for player in ALL_PLAYERS],
+    key=lambda name: (name.split()[-1], name.split()[0])
+)
+
+team_stats_cache = {}
+
+ALL_TEAMS = teams.get_teams()
+
+ALL_TEAM_NAMES = sorted([team["full_name"] for team in ALL_TEAMS])
+
+TEAM_LOOKUP = {
+    team["full_name"].lower(): team
+    for team in ALL_TEAMS
+}
+
+def get_all_player_names():
+    return ALL_PLAYER_NAMES
+
+def get_all_team_names():
+    return ALL_TEAM_NAMES
 
 # serve index page
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 # route to players
 @app.route("/players")
 @app.route("/players/<letter>")
 def playersPage(letter="A"):
     letter = letter.upper()
+    all_players = get_all_player_names()
 
     filtered_players = [
-        p for p in ALL_PLAYERS if p.split()[-1][0].upper() == letter
+        p for p in all_players
+        if p.split()[-1][0].upper() == letter
     ]
 
     alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -84,24 +67,92 @@ def playersPage(letter="A"):
         selected_letter=letter
     )
 
+@app.route("/player/<path:name>")
+def playerPage(name):
+    name = unquote(name)
+
+    found_players = players.find_players_by_full_name(name)
+    if not found_players:
+        return render_template("player.html", error="Player not found", player_name=name)
+
+    player = found_players[0]
+
+    if player["full_name"].lower() != name.lower():
+        return render_template("player.html", error="Player not found", player_name=name)
+
+    player_id = player["id"]
+
+    if player_id in player_stats_cache:
+        season_stats = player_stats_cache[player_id]
+    else:
+        career = playercareerstats.PlayerCareerStats(player_id=player_id)
+        career_data = career.get_dict()
+
+        season_stats = []
+        if "resultSets" in career_data:
+            for result_set in career_data["resultSets"]:
+                if result_set.get("name") == "SeasonTotalsRegularSeason":
+                    headers = result_set["headers"]
+                    rows = result_set["rowSet"]
+
+                    for row in rows:
+                        season_stats.append(dict(zip(headers, row)))
+                    break
+
+        player_stats_cache[player_id] = season_stats
+
+    return render_template(
+        "player.html",
+        player_name=player["full_name"],
+        season_stats=season_stats
+    )
+
+
 # route to teams
 @app.route("/teams")
-@app.route("/teams/<letter>")
-def teamsPage(letter="A"):
-    letter = letter.upper()
-
-    filtered_teams = [
-        team for team in ALL_TEAMS if team[0].upper() == letter
-    ]
-
-    alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+def teamsPage():
+    all_teams = get_all_team_names()
 
     return render_template(
         "teams.html",
-        teams=filtered_teams,
-        alphabet=alphabet,
-        selected_letter=letter
+        teams=all_teams
     )
+
+@app.route("/team/<path:name>")
+def teamPage(name):
+    name = unquote(name)
+
+    team = TEAM_LOOKUP.get(name.lower())
+    if not team:
+        return render_template("team.html", error="Team not found", team_name=name)
+
+    team_id = team["id"]
+
+    if team_id in team_stats_cache:
+        season_stats = team_stats_cache[team_id]
+    else:
+        team_data = teamyearbyyearstats.TeamYearByYearStats(team_id=team_id)
+        stats_dict = team_data.get_dict()
+
+        season_stats = []
+        if "resultSets" in stats_dict:
+            for result_set in stats_dict["resultSets"]:
+                if result_set.get("name") == "TeamStats":
+                    headers = result_set["headers"]
+                    rows = result_set["rowSet"]
+
+                    for row in rows:
+                        season_stats.append(dict(zip(headers, row)))
+                    break
+
+        team_stats_cache[team_id] = season_stats
+
+    return render_template(
+        "team.html",
+        team_name=team["full_name"],
+        season_stats=season_stats
+    )
+
 
 # route to search
 @app.route("/search")
@@ -114,13 +165,16 @@ def search():
     if query:
         lower_query = query.lower()
 
+        all_players = get_all_player_names()
+        all_teams = get_all_team_names()
+
         player_results = [
-            player for player in ALL_PLAYERS
+            player for player in all_players
             if lower_query in player.lower()
         ]
 
         team_results = [
-            team for team in ALL_TEAMS
+            team for team in all_teams
             if lower_query in team.lower()
         ]
 
@@ -131,52 +185,66 @@ def search():
         team_results=team_results
     )
 
+
 # returns list of player names
 @app.route("/api/players", methods=["GET"])
 def listPlayers():
-    allPlayers = players.get_players()
-    return jsonify([player["full_name"] for player in allPlayers])
+    all_players = players.get_players()
+    return jsonify([player["full_name"] for player in all_players])
+
 
 # returns list of team names
 @app.route("/api/teams", methods=["GET"])
 def listTeams():
-    allTeams = teams.get_teams()
-    return jsonify([team["full_name"] for team in allTeams])
+    all_teams = teams.get_teams()
+    return jsonify([team["full_name"] for team in all_teams])
+
 
 # returns data for given player by full player name
 @app.route("/api/player/<name>", methods=["GET"])
 def getPlayerData(name):
+    found_players = players.find_players_by_full_name(name)
 
-    # attempt to look up player and continue if names match
-    player = players.find_players_by_full_name(name)[0]
+    if not found_players:
+        return jsonify({"error": "Player not found"}), 404
+
+    player = found_players[0]
+
     if player["full_name"].lower() == name.lower():
-        career = playercareerstats.PlayerCareerStats(player["id"])
-        return jsonify(career.get_dict()) # return player career data
-    
-    # return none if player not found 
-    else: 
-        return None
+        career = playercareerstats.PlayerCareerStats(player_id=player["id"])
+        return jsonify(career.get_dict())
 
-# returns data for given team and continue if names match
+    return jsonify({"error": "Player not found"}), 404
+
+
+# returns data for given team
 @app.route("/api/team/<name>", methods=["GET"])
 def getTeamData(name):
-    team = teams.find_teams_by_full_name(name)[0]
+    found_teams = teams.find_teams_by_full_name(name)
+
+    if not found_teams:
+        return jsonify({"error": "Team not found"}), 404
+
+    team = found_teams[0]
+
     if team["full_name"].lower() == name.lower():
-        info = teaminfocommon.TeamInfoCommon(team["id"])
+        info = teaminfocommon.TeamInfoCommon(team_id=team["id"])
         return jsonify(info.get_dict())
-    else:
-        return None
+
+    return jsonify({"error": "Team not found"}), 404
+
 
 # search players and teams using a given query and show top results
 @app.route("/api/search/<query>", methods=["GET"])
 def getSearchSuggestions(query):
-    
-    # search players and teams using query
-    searchPlayers = players.find_players_by_full_name(query)
-    searchTeams = teams.find_teams_by_full_name(query)
+    search_players = players.find_players_by_full_name(query)
+    search_teams = teams.find_teams_by_full_name(query)
 
-    # return up to five results from each category
-    return jsonify([player["full_name"] for player in searchPlayers[:5]] + [team["full_name"] for team in searchTeams[:5]])
+    return jsonify(
+        [player["full_name"] for player in search_players[:5]] +
+        [team["full_name"] for team in search_teams[:5]]
+    )
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)

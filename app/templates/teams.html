@@ -11,31 +11,23 @@
     <main class="main-content">
 
         <div class="search-section">
-            <h1>Teams</h1>
+            <a href="{{ url_for('index') }}" class="back-link top-back">← Back</a>
 
-            <div class="alphabet">
-                {% for letter in alphabet %}
-                    <a href="{{ url_for('teams', letter=letter) }}"
-                       class="{% if letter == selected_letter %}active{% endif %}">
-                        {{ letter }}
-                    </a>
-                {% endfor %}
-            </div>
+            <h1>Teams</h1>
 
             <div class="player-list">
                 {% if teams %}
                     {% for team in teams %}
                         <div class="player-item">
-                            {{ team }}
+                            <a href="{{ url_for('teamPage', name=team) }}" class="player-link">
+                                {{ team }}
+                            </a>
                         </div>
                     {% endfor %}
                 {% else %}
                     <p>No teams found.</p>
                 {% endif %}
             </div>
-
-            <a href="{{ url_for('index') }}" class="back-link">← Back</a>
-
         </div>
 
     </main>
