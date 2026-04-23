@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Teams</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="app">
+    <main class="main-content">
+
+        <div class="search-section">
+            <a href="{{ url_for('index') }}" class="back-link top-back">← Back</a>
+
+            <h1>Teams</h1>
+
+            <div class="player-list">
+                {% if teams %}
+                    {% for team in teams %}
+                        <div class="player-item">
+                            <a href="{{ url_for('teamPage', name=team) }}" class="player-link">
+                                {{ team }}
+                            </a>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No teams found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </main>
+</div>
+
+</body>
+</html>

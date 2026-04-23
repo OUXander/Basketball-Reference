@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+</head>
+<body>
+
+<div class="app">
+    <main class="main-content">
+        <div class="search-section">
+            <div class="search-section">
+            <a href="{{ url_for('index') }}" class="back-link top-back">← Back</a>
+
+            <h1>Search Results</h1>
+
+            <form action="{{ url_for('search') }}" method="GET" class="search-form">
+                <div class="search-wrapper">
+                    <input 
+                        type="text" 
+                        name="q" 
+                        placeholder="Search players or teams..." 
+                        class="search-bar"
+                        id="searchInput"
+                        value="{{ query }}"
+                    >
+
+                    <button type="submit" class="search-submit" id="searchButton" disabled>
+                        ↑
+                    </button>
+                </div>
+            </form>
+
+            {% if query %}
+                <p class="results-label">Showing results for: "{{ query }}"</p>
+
+                <div class="results-block">
+                    <h2>Players</h2>
+                    <div class="player-list">
+                        {% if player_results %}
+                            {% for player in player_results %}
+                                <div class="player-item">
+                                    <a href="{{ url_for('playerPage', name=player) }}" class="player-link">
+                                        {{ player }}
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="player-item">No matching players found.</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="results-block">
+                    <h2>Teams</h2>
+                    <div class="player-list">
+                        {% if team_results %}
+                            {% for team in team_results %}
+                                <div class="player-item">
+                                    <a href="{{ url_for('teamPage', name=team) }}" class="player-link">
+                                        {{ team }}
+                                    </a>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="player-item">No matching teams found.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <p class="results-label">Type a player or team name above.</p>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+</body>
+</html>
