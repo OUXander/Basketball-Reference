@@ -36,7 +36,12 @@
                             {% for team in east_standings %}
                                 <tr>
                                     <td>{{ team["PlayoffRank"] }}</td>
-                                    <td>{{ team["TeamCity"] }} {{ team["TeamName"] }}</td>
+                                    <td>
+                                        <div class="table-team-cell">
+                                            <img src="{{ team['logo_url'] }}" alt="{{ team['TeamCity'] }} {{ team['TeamName'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ team["TeamCity"] }} {{ team["TeamName"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ team["WINS"] }}</td>
                                     <td>{{ team["LOSSES"] }}</td>
                                     <td>{{ team["WinPCT"] }}</td>
@@ -72,7 +77,12 @@
                             {% for team in west_standings %}
                                 <tr>
                                     <td>{{ team["PlayoffRank"] }}</td>
-                                    <td>{{ team["TeamCity"] }} {{ team["TeamName"] }}</td>
+                                    <td>
+                                        <div class="table-team-cell">
+                                            <img src="{{ team['logo_url'] }}" alt="{{ team['TeamCity'] }} {{ team['TeamName'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ team["TeamCity"] }} {{ team["TeamName"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ team["WINS"] }}</td>
                                     <td>{{ team["LOSSES"] }}</td>
                                     <td>{{ team["WinPCT"] }}</td>

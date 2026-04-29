@@ -32,8 +32,18 @@
                             {% for player in leaders_data["points"] %}
                                 <tr>
                                     <td>{{ player["RANK"] }}</td>
-                                    <td>{{ player["PLAYER"] }}</td>
-                                    <td>{{ player["TEAM"] }}</td>
+                                    <td>
+                                        <div class="table-player-cell">
+                                            <img src="{{ player['headshot_url'] }}" alt="{{ player['PLAYER'] }} headshot" class="player-headshot-tiny" loading="lazy">
+                                            <span>{{ player["PLAYER"] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-team-cell compact">
+                                            <img src="{{ player['team_logo_url'] }}" alt="{{ player['TEAM'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ player["TEAM"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ player["GP"] }}</td>
                                     <td>{{ player["PTS"] }}</td>
                                 </tr>
@@ -60,8 +70,18 @@
                             {% for player in leaders_data["rebounds"] %}
                                 <tr>
                                     <td>{{ player["RANK"] }}</td>
-                                    <td>{{ player["PLAYER"] }}</td>
-                                    <td>{{ player["TEAM"] }}</td>
+                                    <td>
+                                        <div class="table-player-cell">
+                                            <img src="{{ player['headshot_url'] }}" alt="{{ player['PLAYER'] }} headshot" class="player-headshot-tiny" loading="lazy">
+                                            <span>{{ player["PLAYER"] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-team-cell compact">
+                                            <img src="{{ player['team_logo_url'] }}" alt="{{ player['TEAM'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ player["TEAM"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ player["GP"] }}</td>
                                     <td>{{ player["REB"] }}</td>
                                 </tr>
@@ -88,8 +108,18 @@
                             {% for player in leaders_data["assists"] %}
                                 <tr>
                                     <td>{{ player["RANK"] }}</td>
-                                    <td>{{ player["PLAYER"] }}</td>
-                                    <td>{{ player["TEAM"] }}</td>
+                                    <td>
+                                        <div class="table-player-cell">
+                                            <img src="{{ player['headshot_url'] }}" alt="{{ player['PLAYER'] }} headshot" class="player-headshot-tiny" loading="lazy">
+                                            <span>{{ player["PLAYER"] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-team-cell compact">
+                                            <img src="{{ player['team_logo_url'] }}" alt="{{ player['TEAM'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ player["TEAM"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ player["GP"] }}</td>
                                     <td>{{ player["AST"] }}</td>
                                 </tr>
@@ -116,8 +146,18 @@
                             {% for player in leaders_data["steals"] %}
                                 <tr>
                                     <td>{{ player["RANK"] }}</td>
-                                    <td>{{ player["PLAYER"] }}</td>
-                                    <td>{{ player["TEAM"] }}</td>
+                                    <td>
+                                        <div class="table-player-cell">
+                                            <img src="{{ player['headshot_url'] }}" alt="{{ player['PLAYER'] }} headshot" class="player-headshot-tiny" loading="lazy">
+                                            <span>{{ player["PLAYER"] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-team-cell compact">
+                                            <img src="{{ player['team_logo_url'] }}" alt="{{ player['TEAM'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ player["TEAM"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ player["GP"] }}</td>
                                     <td>{{ player["STL"] }}</td>
                                 </tr>
@@ -144,8 +184,18 @@
                             {% for player in leaders_data["blocks"] %}
                                 <tr>
                                     <td>{{ player["RANK"] }}</td>
-                                    <td>{{ player["PLAYER"] }}</td>
-                                    <td>{{ player["TEAM"] }}</td>
+                                    <td>
+                                        <div class="table-player-cell">
+                                            <img src="{{ player['headshot_url'] }}" alt="{{ player['PLAYER'] }} headshot" class="player-headshot-tiny" loading="lazy">
+                                            <span>{{ player["PLAYER"] }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="table-team-cell compact">
+                                            <img src="{{ player['team_logo_url'] }}" alt="{{ player['TEAM'] }} logo" class="team-logo-tiny" loading="lazy">
+                                            <span>{{ player["TEAM"] }}</span>
+                                        </div>
+                                    </td>
                                     <td>{{ player["GP"] }}</td>
                                     <td>{{ player["BLK"] }}</td>
                                 </tr>
