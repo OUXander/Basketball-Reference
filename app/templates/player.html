@@ -35,7 +35,14 @@
         <div class="search-section">
             <a href="{{ url_for('playersPage') }}" class="back-link top-back">← Back</a>
 
-            <h1>{{ player_name }}</h1>
+            {% if not error %}
+                <div class="profile-header">
+                    <img src="{{ player_headshot_url }}" alt="{{ player_name }} headshot" class="player-headshot-large">
+                    <h1>{{ player_name }}</h1>
+                </div>
+            {% else %}
+                <h1>{{ player_name }}</h1>
+            {% endif %}
 
             {% if error %}
                 <p class="results-label">{{ error }}</p>
@@ -90,7 +97,15 @@
                                         <td>{{ g["FGM"] }}-{{ g["FGA"] }}</td>
                                         <td>{{ g["FG3M"] }}-{{ g["FG3A"] }}</td>
                                         <td>{{ g["FTM"] }}-{{ g["FTA"] }}</td>
-                                        <td>{{ '+' ~ g["PLUS_MINUS"] if g["PLUS_MINUS"] > 0 else g["PLUS_MINUS"] }}</td>
+                                        <td>
+                                            {% if g["PLUS_MINUS"] is none %}
+                                            -
+                                            {% elif g["PLUS_MINUS"] > 0 %}
+                                            +{{ g["PLUS_MINUS"] }}
+                                            {% else %}
+                                            {{ g["PLUS_MINUS"] }}
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

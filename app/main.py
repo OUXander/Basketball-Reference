@@ -29,6 +29,36 @@ TEAM_LOOKUP = {
     for team in ALL_TEAMS
 }
 
+PLAYER_LOOKUP = {
+    player["full_name"].lower(): player
+    for player in ALL_PLAYERS
+}
+
+TEAM_ABBR_LOOKUP = {
+    team["abbreviation"].upper(): team
+    for team in ALL_TEAMS
+}
+
+def get_player_headshot_url(player_id):
+    return f"https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png"
+
+def get_team_logo_url(team_id):
+    return f"https://cdn.nba.com/logos/nba/{team_id}/global/L/logo.svg"
+
+def build_player_card(player_name):
+    player = PLAYER_LOOKUP.get(player_name.lower())
+    return {
+        "name": player_name,
+        "headshot_url": get_player_headshot_url(player["id"]) if player else ""
+    }
+
+def build_team_card(team_name):
+    team = TEAM_LOOKUP.get(team_name.lower())
+    return {
+        "name": team_name,
+        "logo_url": get_team_logo_url(team["id"]) if team else ""
+    }
+
 standings_cache = None
 standings_cache_season = None
 
@@ -76,6 +106,17 @@ def get_leaders_for_category(stat_category):
 
     return leaders_rows[:10]
 
+def add_visuals_to_leader_rows(rows):
+    for row in rows:
+        player_id = row.get("PLAYER_ID")
+        team_abbr = row.get("TEAM", "").upper()
+        team = TEAM_ABBR_LOOKUP.get(team_abbr)
+
+        row["headshot_url"] = get_player_headshot_url(player_id) if player_id else ""
+        row["team_logo_url"] = get_team_logo_url(team["id"]) if team else ""
+
+    return rows
+
 # serve index page
 @app.route("/")
 def index():
@@ -96,9 +137,11 @@ def playersPage(letter="A"):
 
     alphabet = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
+    player_cards = [build_player_card(player_name) for player_name in filtered_players]
+
     return render_template(
         "players.html",
-        players=filtered_players,
+        players=player_cards,
         alphabet=alphabet,
         selected_letter=letter
     )
@@ -167,6 +210,7 @@ def playerPage(name):
     return render_template(
         "player.html",
         player_name=player["full_name"],
+        player_headshot_url=get_player_headshot_url(player_id),
         season_stats=season_stats,
         game_log=game_log,
         selected_season=selected_season,
@@ -179,9 +223,11 @@ def playerPage(name):
 def teamsPage():
     all_teams = get_all_team_names()
 
+    team_cards = [build_team_card(team_name) for team_name in all_teams]
+
     return render_template(
         "teams.html",
-        teams=all_teams
+        teams=team_cards
     )
 
 @app.route("/team/<path:name>")
@@ -216,6 +262,7 @@ def teamPage(name):
     return render_template(
         "team.html",
         team_name=team["full_name"],
+        team_logo_url=get_team_logo_url(team_id),
         season_stats=season_stats
     )
 
@@ -244,11 +291,14 @@ def search():
             if lower_query in team.lower()
         ]
 
+    player_result_cards = [build_player_card(player_name) for player_name in player_results]
+    team_result_cards = [build_team_card(team_name) for team_name in team_results]
+
     return render_template(
         "search_results.html",
         query=query,
-        player_results=player_results,
-        team_results=team_results
+        player_results=player_result_cards,
+        team_results=team_result_cards
     )
 
 # route to standings
@@ -277,6 +327,10 @@ def standingsPage():
                     standings_rows.append(dict(zip(headers, row)))
                 break
 
+        for row in standings_rows:
+            team_id = row.get("TeamID")
+            row["logo_url"] = get_team_logo_url(team_id) if team_id else ""
+
         east_standings = [team for team in standings_rows if team["Conference"] == "East"]
         west_standings = [team for team in standings_rows if team["Conference"] == "West"]
 
@@ -304,11 +358,11 @@ def leadersPage():
         leaders_data = leaders_cache
     else:
         leaders_data = {
-            "points": get_leaders_for_category("PTS"),
-            "rebounds": get_leaders_for_category("REB"),
-            "assists": get_leaders_for_category("AST"),
-            "steals": get_leaders_for_category("STL"),
-            "blocks": get_leaders_for_category("BLK")
+            "points": add_visuals_to_leader_rows(get_leaders_for_category("PTS")),
+            "rebounds": add_visuals_to_leader_rows(get_leaders_for_category("REB")),
+            "assists": add_visuals_to_leader_rows(get_leaders_for_category("AST")),
+            "steals": add_visuals_to_leader_rows(get_leaders_for_category("STL")),
+            "blocks": add_visuals_to_leader_rows(get_leaders_for_category("BLK"))
         }
 
         leaders_cache = leaders_data
@@ -364,6 +418,11 @@ def statsPage():
         teams_data = games_scores.get(game_id, [])
         away = teams_data[0] if len(teams_data) > 0 else {}
         home = teams_data[1] if len(teams_data) > 1 else {}
+        if away.get("TEAM_ID"):
+            away["logo_url"] = get_team_logo_url(away["TEAM_ID"])
+        if home.get("TEAM_ID"):
+            home["logo_url"] = get_team_logo_url(home["TEAM_ID"])
+
         games.append({
             "game_id": game_id,
             "status": header.get("GAME_STATUS_TEXT", "").strip(),
@@ -400,13 +459,16 @@ def boxscoreAPI(game_id):
     for p in player_rows:
         abbr = p.get("TEAM_ABBREVIATION", "")
         if abbr not in teams_map:
+            team_id = p.get("TEAM_ID")
             teams_map[abbr] = {
                 "abbreviation": abbr,
                 "city": p.get("TEAM_CITY", ""),
+                "logo_url": get_team_logo_url(team_id) if team_id else "",
                 "players": []
             }
         teams_map[abbr]["players"].append({
             "name": p.get("PLAYER_NAME", ""),
+            "headshot_url": get_player_headshot_url(p.get("PLAYER_ID")) if p.get("PLAYER_ID") else "",
             "position": p.get("START_POSITION", ""),
             "min": p.get("MIN", ""),
             "pts": p.get("PTS", 0),

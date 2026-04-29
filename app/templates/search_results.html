@@ -42,8 +42,9 @@
                         {% if player_results %}
                             {% for player in player_results %}
                                 <div class="player-item">
-                                    <a href="{{ url_for('playerPage', name=player) }}" class="player-link">
-                                        {{ player }}
+                                    <a href="{{ url_for('playerPage', name=player.name) }}" class="player-link item-with-image">
+                                        <img src="{{ player.headshot_url }}" alt="{{ player.name }} headshot" class="player-headshot-small" loading="lazy">
+                                        <span>{{ player.name }}</span>
                                     </a>
                                 </div>
                             {% endfor %}
@@ -59,8 +60,9 @@
                         {% if team_results %}
                             {% for team in team_results %}
                                 <div class="player-item">
-                                    <a href="{{ url_for('teamPage', name=team) }}" class="player-link">
-                                        {{ team }}
+                                    <a href="{{ url_for('teamPage', name=team.name) }}" class="player-link item-with-image">
+                                        <img src="{{ team.logo_url }}" alt="{{ team.name }} logo" class="team-logo-small" loading="lazy">
+                                        <span>{{ team.name }}</span>
                                     </a>
                                 </div>
                             {% endfor %}

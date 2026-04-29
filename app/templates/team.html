@@ -12,7 +12,14 @@
         <div class="search-section">
             <a href="{{ url_for('teamsPage') }}" class="back-link top-back">← Back</a>
 
-            <h1>{{ team_name }}</h1>
+            {% if not error %}
+                <div class="profile-header">
+                    <img src="{{ team_logo_url }}" alt="{{ team_name }} logo" class="team-logo-large">
+                    <h1>{{ team_name }}</h1>
+                </div>
+            {% else %}
+                <h1>{{ team_name }}</h1>
+            {% endif %}
 
             {% if error %}
                 <p class="results-label">{{ error }}</p>

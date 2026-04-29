@@ -15,7 +15,6 @@
 
             <h1>Players</h1>
 
-            <!-- 🔤 Alphabet Index -->
             <div class="alphabet">
                 {% for letter in alphabet %}
                     <a href="{{ url_for('playersPage', letter=letter) }}"
@@ -25,13 +24,13 @@
                 {% endfor %}
             </div>
 
-            <!-- 👥 Player List -->
             <div class="player-list">
                 {% if players %}
                     {% for player in players %}
                         <div class="player-item">
-                            <a href="{{ url_for('playerPage', name=player) }}" class="player-link">
-                                {{ player }}
+                            <a href="{{ url_for('playerPage', name=player.name) }}" class="player-link item-with-image">
+                                <img src="{{ player.headshot_url }}" alt="{{ player.name }} headshot" class="player-headshot-small" loading="lazy">
+                                <span>{{ player.name }}</span>
                             </a>
                         </div>
                     {% endfor %}

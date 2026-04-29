@@ -184,11 +184,17 @@
                             <div class="game-status">{{ game.status }}</div>
                             <div class="game-matchup">
                                 <div class="game-team-row">
-                                    <span class="game-team-name">{{ game.away.TEAM_CITY_NAME }} {{ game.away.TEAM_NICKNAME }}</span>
+                                    <span class="game-team-name game-team-name-with-logo">
+                                        <img src="{{ game.away.logo_url }}" alt="{{ game.away.TEAM_CITY_NAME }} {{ game.away.TEAM_NICKNAME }} logo" class="team-logo-tiny" loading="lazy">
+                                        {{ game.away.TEAM_CITY_NAME }} {{ game.away.TEAM_NICKNAME }}
+                                    </span>
                                     <span class="game-team-score">{{ game.away.PTS if game.away.PTS is not none else '' }}</span>
                                 </div>
                                 <div class="game-team-row">
-                                    <span class="game-team-name">{{ game.home.TEAM_CITY_NAME }} {{ game.home.TEAM_NICKNAME }}</span>
+                                    <span class="game-team-name game-team-name-with-logo">
+                                        <img src="{{ game.home.logo_url }}" alt="{{ game.home.TEAM_CITY_NAME }} {{ game.home.TEAM_NICKNAME }} logo" class="team-logo-tiny" loading="lazy">
+                                        {{ game.home.TEAM_CITY_NAME }} {{ game.home.TEAM_NICKNAME }}
+                                    </span>
                                     <span class="game-team-score">{{ game.home.PTS if game.home.PTS is not none else '' }}</span>
                                 </div>
                             </div>
@@ -241,7 +247,10 @@ function openGame(gameId, awayName, homeName, status, awayPts, homePts) {
             let html = '<div class="modal-teams">';
             data.forEach(team => {
                 html += `<div class="modal-team">
-                    <div class="modal-team-name">${team.city} ${team.abbreviation}</div>
+                    <div class="modal-team-name modal-team-name-with-logo">
+                        <img src="${team.logo_url}" alt="${team.city} ${team.abbreviation} logo" class="team-logo-tiny">
+                        <span>${team.city} ${team.abbreviation}</span>
+                    </div>
                     <table class="modal-team-table">
                         <thead>
                             <tr>
@@ -260,7 +269,14 @@ function openGame(gameId, awayName, homeName, status, awayPts, homePts) {
                     const min = p.min ? p.min.split('.')[0] : '-';
                     const playerLink = `/player/${encodeURIComponent(p.name)}`;
                     html += `<tr>
-                        <td class="${starter}"><a href="${playerLink}" style="color:inherit;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${p.name}</a>${p.position ? ' <span style="color:#6b7280;font-size:11px">${p.position}</span>' : ''}</td>
+                        <td class="${starter}">
+                            <div class="modal-player-cell">
+                                <img src="${p.headshot_url}" alt="${p.name} headshot" class="player-headshot-tiny">
+                                <span>
+                                    <a href="${playerLink}" style="color:inherit;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${p.name}</a>${p.position ? ' <span style="color:#6b7280;font-size:11px">${p.position}</span>' : ''}
+                                </span>
+                            </div>
+                        </td>
                         <td>${min}</td>
                         <td>${p.pts ?? '-'}</td>
                         <td>${p.reb ?? '-'}</td>
