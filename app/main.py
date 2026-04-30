@@ -1,5 +1,5 @@
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, drafthistory
 from flask import Flask, render_template, request, jsonify
 from urllib.parse import unquote
 import os
@@ -8,22 +8,25 @@ from datetime import datetime, timedelta
 # set up app
 app = Flask(__name__)
 
+# initialize cache
 player_stats_cache = {}
 game_log_cache = {}
+team_stats_cache = {}
+standings_cache = None
+standings_cache_season = None
+leaders_cache = None
+leaders_cache_season = None
 
+# pre-populate data
 ALL_PLAYERS = players.get_players()
-
 ALL_PLAYER_NAMES = sorted(
     [player["full_name"] for player in ALL_PLAYERS],
     key=lambda name: (name.split()[-1], name.split()[0])
 )
-
-team_stats_cache = {}
-
 ALL_TEAMS = teams.get_teams()
-
 ALL_TEAM_NAMES = sorted([team["full_name"] for team in ALL_TEAMS])
 
+# set up quick lookups
 TEAM_LOOKUP = {
     team["full_name"].lower(): team
     for team in ALL_TEAMS
@@ -38,6 +41,8 @@ TEAM_ABBR_LOOKUP = {
     team["abbreviation"].upper(): team
     for team in ALL_TEAMS
 }
+
+# data functions
 
 def get_player_headshot_url(player_id):
     return f"https://cdn.nba.com/headshots/nba/latest/1040x760/{player_id}.png"
@@ -58,12 +63,6 @@ def build_team_card(team_name):
         "name": team_name,
         "logo_url": get_team_logo_url(team["id"]) if team else ""
     }
-
-standings_cache = None
-standings_cache_season = None
-
-leaders_cache = None
-leaders_cache_season = None
 
 def get_all_player_names():
     return ALL_PLAYER_NAMES
@@ -117,11 +116,12 @@ def add_visuals_to_leader_rows(rows):
 
     return rows
 
+# front end
+
 # serve index page
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 # route to players
 @app.route("/players")
@@ -230,6 +230,7 @@ def teamsPage():
         teams=team_cards
     )
 
+# serve team information
 @app.route("/team/<path:name>")
 def teamPage(name):
     name = unquote(name)
@@ -554,6 +555,11 @@ def getCurrentLeaders():
     leaders = leagueleaders.LeagueLeaders(season = str(int(datetime.now().year) - 1) + "-" + datetime.now().strftime("%y"))
     return jsonify(leaders.get_dict())
 
+# return draft history
+@app.route("/api/draft", methods=["GET"])
+def getDraftHistory():
+    draftHist = drafthistory.DraftHistory()
+    return jsonify(draftHist.get_dict())
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
