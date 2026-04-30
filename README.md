@@ -15,6 +15,10 @@ The website is not hosted publicly, however it can be hosted locally with Python
 
 Next, make sure no other application is running on port 8000 then run `make` to launch the application. Once running, visit http://localhost:8000/.
 
+## Structure
+
+This project relies on a central Python file (main.py) to organize data about players and teams. Under "Static" is a file that dicates the style of the website (style.css), a file that grants users the ability to interact with the website (sidebar.js), and the logo. Under "Templates", all pages of the website can be found, and what information is displayed on each.
+
 ## To-Do
 
 - Implement functionality for remaining buttons.
