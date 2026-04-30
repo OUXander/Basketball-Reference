@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Historical Leaders</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="app">
+    <main class="main-content">
+        <div class="search-section">
+            <a href="{{ url_for('index') }}" class="back-link top-back">← Back</a>
+
+            <h1>NBA Historical Leaders</h1>
+            <p class="results-label">All-time regular season totals from NBA Stats</p>
+
+            <div class="leader-category-tabs">
+                {% for category_key, category in historical_data.items() %}
+                    <a
+                        href="{{ url_for('historicalLeadersPage', category=category_key) }}"
+                        class="leader-category-tab {% if selected_category == category_key %}active{% endif %}"
+                    >
+                        {{ category.title }}
+                    </a>
+                {% endfor %}
+            </div>
+
+            {% if selected_data.rows %}
+                <div class="historical-highlight-card">
+                    {% set leader = selected_data.rows[0] %}
+                    <img src="{{ leader.headshot_url }}" alt="{{ leader.PLAYER_NAME }} headshot" class="player-headshot-large" loading="lazy">
+                    <div>
+                        <p class="highlight-label">All-Time {{ selected_data.title }} Leader</p>
+                        <h2>{{ leader.PLAYER_NAME }}</h2>
+                        <p class="highlight-stat">{{ "{:,}".format(leader[selected_data.stat_key]) }} {{ selected_data.title }}</p>
+                    </div>
+                </div>
+
+                <div class="results-block standings-block">
+                    <h2>Top 10 {{ selected_data.title }}</h2>
+                    <div class="chart-card">
+                        <canvas id="historicalLeadersChart"></canvas>
+                    </div>
+                </div>
+
+            {% else %}
+                <p class="results-label">Could not load historical leaders right now.</p>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<script>
+    const chartData = {{ chart_data | tojson }};
+    const chartCanvas = document.getElementById("historicalLeadersChart");
+
+    if (chartCanvas) {
+        new Chart(chartCanvas, {
+            type: "bar",
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: "{{ selected_data.title }}",
+                    data: chartData.values,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#d1d5db"
+                        },
+                        grid: {
+                            color: "#2a2a2a"
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#d1d5db"
+                        },
+                        grid: {
+                            color: "#2a2a2a"
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
