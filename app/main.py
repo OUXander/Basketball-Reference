@@ -1,5 +1,5 @@
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, alltimeleadersgrids
 from flask import Flask, render_template, request, jsonify
 from urllib.parse import unquote
 import os
@@ -64,6 +64,8 @@ standings_cache_season = None
 
 leaders_cache = None
 leaders_cache_season = None
+historical_leaders_cache = None
+
 
 def get_all_player_names():
     return ALL_PLAYER_NAMES
@@ -117,6 +119,85 @@ def add_visuals_to_leader_rows(rows):
 
     return rows
 
+
+def add_headshots_to_historical_rows(rows):
+    for row in rows:
+        player_id = row.get("PLAYER_ID")
+        row["headshot_url"] = get_player_headshot_url(player_id) if player_id else ""
+    return rows
+
+
+def convert_result_set_to_rows(leaders_dict, result_set_name):
+    for result_set in leaders_dict.get("resultSets", []):
+        if result_set.get("name") == result_set_name:
+            headers = result_set.get("headers", [])
+            return [dict(zip(headers, row)) for row in result_set.get("rowSet", [])]
+    return []
+
+
+def get_historical_leaders():
+    leaders = alltimeleadersgrids.AllTimeLeadersGrids(
+        league_id="00",
+        per_mode_simple="Totals",
+        season_type="Regular Season",
+        topx=10
+    )
+
+    leaders_dict = leaders.get_dict()
+
+    categories = {
+        "points": {
+            "title": "Points",
+            "result_set": "PTSLeaders",
+            "stat_key": "PTS",
+            "rank_key": "PTS_RANK"
+        },
+        "rebounds": {
+            "title": "Rebounds",
+            "result_set": "REBLeaders",
+            "stat_key": "REB",
+            "rank_key": "REB_RANK"
+        },
+        "assists": {
+            "title": "Assists",
+            "result_set": "ASTLeaders",
+            "stat_key": "AST",
+            "rank_key": "AST_RANK"
+        },
+        "steals": {
+            "title": "Steals",
+            "result_set": "STLLeaders",
+            "stat_key": "STL",
+            "rank_key": "STL_RANK"
+        },
+        "blocks": {
+            "title": "Blocks",
+            "result_set": "BLKLeaders",
+            "stat_key": "BLK",
+            "rank_key": "BLK_RANK"
+        },
+        "threes": {
+            "title": "3-Pointers Made",
+            "result_set": "FG3MLeaders",
+            "stat_key": "FG3M",
+            "rank_key": "FG3M_RANK"
+        }
+    }
+
+    historical_data = {}
+
+    for category_key, category_info in categories.items():
+        rows = convert_result_set_to_rows(leaders_dict, category_info["result_set"])
+        rows = add_headshots_to_historical_rows(rows)
+
+        historical_data[category_key] = {
+            "title": category_info["title"],
+            "stat_key": category_info["stat_key"],
+            "rank_key": category_info["rank_key"],
+            "rows": rows
+        }
+
+    return historical_data
 # serve index page
 @app.route("/")
 def index():
@@ -372,6 +453,34 @@ def leadersPage():
         "leaders.html",
         season=current_season,
         leaders_data=leaders_data
+    )
+
+# route to historical leaders
+@app.route("/historical-leaders")
+def historicalLeadersPage():
+    global historical_leaders_cache
+
+    selected_category = request.args.get("category", "points")
+
+    if historical_leaders_cache is None:
+        historical_leaders_cache = get_historical_leaders()
+
+    if selected_category not in historical_leaders_cache:
+        selected_category = "points"
+
+    selected_data = historical_leaders_cache[selected_category]
+
+    chart_data = {
+        "labels": [row.get("PLAYER_NAME", "") for row in selected_data["rows"]],
+        "values": [row.get(selected_data["stat_key"], 0) for row in selected_data["rows"]]
+    }
+
+    return render_template(
+        "historical_leaders.html",
+        historical_data=historical_leaders_cache,
+        selected_category=selected_category,
+        selected_data=selected_data,
+        chart_data=chart_data
     )
 
 # route to scores/stats page
