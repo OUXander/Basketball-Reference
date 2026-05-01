@@ -1,6 +1,6 @@
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, alltimeleadersgrids, drafthistory
-from flask import Flask, render_template, request, jsonify, Response, send_from_directory
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory, url_for
 from urllib.parse import unquote
 import os
 from datetime import datetime, timedelta
@@ -668,11 +668,38 @@ def getCurrentLeaders():
     leaders = leagueleaders.LeagueLeaders(season = str(int(datetime.now().year) - 1) + "-" + datetime.now().strftime("%y"))
     return jsonify(leaders.get_dict())
 
-# return draft history
-@app.route("/api/draft", methods=["GET"])
-def getDraftHistory():
-    draftHist = drafthistory.DraftHistory()
-    return jsonify(draftHist.get_dict())
+# return draft results by year
+@app.route("/draft", methods=["GET"])
+def draftPage():
+    
+    # get API data and attributes
+    raw = drafthistory.DraftHistory().get_dict()
+    result_set = raw["resultSets"][0]
+    headers = result_set["headers"]
+    rows = result_set["rowSet"]
+
+    # prepare to parse
+    data = [dict(zip(headers, row)) for row in rows]
+    draftByYear = {}
+
+    # parse data into neat rows to pass to front end
+    for row in data:
+        year = str(row["SEASON"])
+        playerName = row["PLAYER_NAME"]
+        card = build_player_card(playerName)
+        row["headshot_url"] = card["headshot_url"]
+        row["player_page_url"] = url_for("playerPage", name=playerName)
+        draftByYear.setdefault(year, []).append(row)
+
+    # sort parsed data
+    availableYears = sorted(draftByYear.keys(), reverse=True)
+    selectedYear = request.args.get("year")
+    if selectedYear not in draftByYear:
+        selectedYear = availableYears[0] if availableYears else None
+    draftData = draftByYear.get(selectedYear, [])
+
+    # returned parsed, sorted, and cleaned data
+    return render_template("draft.html", available_years=availableYears, selected_year=selectedYear, draft_data=draftData)
 
 # return points per game vs rebounds per game for given player id
 @app.route("/api/ppg_rpg_<playerId>.png")

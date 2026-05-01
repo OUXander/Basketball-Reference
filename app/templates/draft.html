@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Draft History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .season-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .season-selector label {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        .season-selector select {
+            background: #2a2a2a;
+            color: #f1f1f1;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+        }
+        .season-selector select:hover { border-color: #666; }
+    </style>
+</head>
+<body>
+<div class="app">
+    <main class="main-content">
+        <div class="search-section">
+            <a href="/" class="back-link top-back">← Back</a>
+
+            <h1>Draft History</h1>
+
+            {% if available_years %}
+            <div class="season-selector">
+                <label for="yearSelect">Year:</label>
+                <select id="yearSelect" onchange="switchYear(this.value)">
+                    {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>
+                            {{ y }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="results-block player-stats-block">
+                <h2>{{ selected_year }} Draft Results</h2>
+
+                {% if draft_data %}
+                <div class="stats-table-wrapper">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Pick</th>
+                                <th>Player</th>
+                                <th>Team</th>
+                                <th>College</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pick in draft_data %}
+                            <tr>
+				<td>{{ pick["OVERALL_PICK"] }}</td>
+				<td>
+    <a href="{{ pick['player_page_url'] }}" class="player-link item-with-image">
+        <img src="{{ pick['headshot_url'] }}"
+             alt="{{ pick['PLAYER_NAME'] }} headshot"
+             class="player-headshot-small"
+             loading="lazy">
+        <span>{{ pick["PLAYER_NAME"] }}</span>
+    </a>
+</td>
+				<td>{{ pick["TEAM_ABBREVIATION"] }}</td>
+				<td>{{ pick["ORGANIZATION"] }}</td>
+			    </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <p class="results-label">No draft data available for this year.</p>
+                {% endif %}
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+function switchYear(year) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    window.location.href = url.toString();
+}
+</script>
+
+</body>
+</html>
