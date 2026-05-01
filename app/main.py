@@ -1,6 +1,6 @@
 from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, alltimeleadersgrids, drafthistory
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
 from urllib.parse import unquote
 import os
 from datetime import datetime, timedelta
@@ -197,6 +197,11 @@ def get_historical_leaders():
     return historical_data
 
 # front end
+
+# serve favicon
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, "static"), "favicon.ico", mimetype = "image/vnd.microsoft.icon")
 
 # serve index page
 @app.route("/")
