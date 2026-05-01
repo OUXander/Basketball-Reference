@@ -1,5 +1,5 @@
 from nba_api.stats.static import players, teams
-from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, alltimeleadersgrids, drafthistory
+from nba_api.stats.endpoints import playercareerstats, teaminfocommon, teamyearbyyearstats, leaguestandings, leagueleaders, scoreboardv2, boxscoretraditionalv2, playergamelog, commonplayoffseries, leaguegamelog, alltimeleadersgrids, drafthistory
 from flask import Flask, render_template, request, jsonify, Response, send_from_directory, url_for
 from urllib.parse import unquote
 import os
@@ -18,6 +18,382 @@ standings_cache_season = None
 leaders_cache = None
 leaders_cache_season = None
 historical_leaders_cache = None
+playoffs_cache = {}
+
+AWARDS_BY_SEASON = {
+    "2024-25": {
+        "MVP":         {"name": "Shai Gilgeous-Alexander", "team": "Oklahoma City Thunder"},
+        "Finals MVP":  {"name": "Shai Gilgeous-Alexander", "team": "Oklahoma City Thunder"},
+        "DPOY":        {"name": "Evan Mobley",              "team": "Cleveland Cavaliers"},
+        "ROY":         {"name": "Stephon Castle",           "team": "San Antonio Spurs"},
+        "MIP":         {"name": "Dyson Daniels",            "team": "Atlanta Hawks"},
+        "6MOY":        {"name": "Payton Pritchard",         "team": "Boston Celtics"},
+        "COY":         {"name": "Mark Daigneault",          "team": "Oklahoma City Thunder"},
+    },
+    "2023-24": {
+        "MVP":         {"name": "Nikola Jokic",             "team": "Denver Nuggets"},
+        "Finals MVP":  {"name": "Jaylen Brown",             "team": "Boston Celtics"},
+        "DPOY":        {"name": "Rudy Gobert",              "team": "Minnesota Timberwolves"},
+        "ROY":         {"name": "Victor Wembanyama",        "team": "San Antonio Spurs"},
+        "MIP":         {"name": "Tyrese Maxey",             "team": "Philadelphia 76ers"},
+        "6MOY":        {"name": "Naz Reid",                 "team": "Minnesota Timberwolves"},
+        "COY":         {"name": "Mark Daigneault",          "team": "Oklahoma City Thunder"},
+    },
+    "2022-23": {
+        "MVP":         {"name": "Joel Embiid",              "team": "Philadelphia 76ers"},
+        "Finals MVP":  {"name": "Nikola Jokic",             "team": "Denver Nuggets"},
+        "DPOY":        {"name": "Jaren Jackson Jr.",        "team": "Memphis Grizzlies"},
+        "ROY":         {"name": "Paolo Banchero",           "team": "Orlando Magic"},
+        "MIP":         {"name": "Lauri Markkanen",          "team": "Utah Jazz"},
+        "6MOY":        {"name": "Malcolm Brogdon",          "team": "Boston Celtics"},
+        "COY":         {"name": "Mike Brown",               "team": "Sacramento Kings"},
+    },
+    "2021-22": {
+        "MVP":         {"name": "Nikola Jokic",             "team": "Denver Nuggets"},
+        "Finals MVP":  {"name": "Stephen Curry",            "team": "Golden State Warriors"},
+        "DPOY":        {"name": "Marcus Smart",             "team": "Boston Celtics"},
+        "ROY":         {"name": "Scottie Barnes",           "team": "Toronto Raptors"},
+        "MIP":         {"name": "Ja Morant",                "team": "Memphis Grizzlies"},
+        "6MOY":        {"name": "Tyler Herro",              "team": "Miami Heat"},
+        "COY":         {"name": "Monty Williams",           "team": "Phoenix Suns"},
+    },
+    "2020-21": {
+        "MVP":         {"name": "Nikola Jokic",             "team": "Denver Nuggets"},
+        "Finals MVP":  {"name": "Giannis Antetokounmpo",   "team": "Milwaukee Bucks"},
+        "DPOY":        {"name": "Rudy Gobert",              "team": "Utah Jazz"},
+        "ROY":         {"name": "LaMelo Ball",              "team": "Charlotte Hornets"},
+        "MIP":         {"name": "Julius Randle",            "team": "New York Knicks"},
+        "6MOY":        {"name": "Jordan Clarkson",          "team": "Utah Jazz"},
+        "COY":         {"name": "Quin Snyder",              "team": "Utah Jazz"},
+    },
+    "2019-20": {
+        "MVP":         {"name": "Giannis Antetokounmpo",   "team": "Milwaukee Bucks"},
+        "Finals MVP":  {"name": "LeBron James",             "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Giannis Antetokounmpo",   "team": "Milwaukee Bucks"},
+        "ROY":         {"name": "Ja Morant",                "team": "Memphis Grizzlies"},
+        "MIP":         {"name": "Brandon Ingram",           "team": "New Orleans Pelicans"},
+        "6MOY":        {"name": "Montrezl Harrell",         "team": "Los Angeles Clippers"},
+        "COY":         {"name": "Nick Nurse",               "team": "Toronto Raptors"},
+    },
+    "2018-19": {
+        "MVP":         {"name": "Giannis Antetokounmpo",   "team": "Milwaukee Bucks"},
+        "Finals MVP":  {"name": "Kawhi Leonard",            "team": "Toronto Raptors"},
+        "DPOY":        {"name": "Rudy Gobert",              "team": "Utah Jazz"},
+        "ROY":         {"name": "Luka Doncic",              "team": "Dallas Mavericks"},
+        "MIP":         {"name": "Pascal Siakam",            "team": "Toronto Raptors"},
+        "6MOY":        {"name": "Lou Williams",             "team": "Los Angeles Clippers"},
+        "COY":         {"name": "Mike Budenholzer",         "team": "Milwaukee Bucks"},
+    },
+    "2017-18": {
+        "MVP":         {"name": "James Harden",             "team": "Houston Rockets"},
+        "Finals MVP":  {"name": "Kevin Durant",             "team": "Golden State Warriors"},
+        "DPOY":        {"name": "Rudy Gobert",              "team": "Utah Jazz"},
+        "ROY":         {"name": "Ben Simmons",              "team": "Philadelphia 76ers"},
+        "MIP":         {"name": "Victor Oladipo",           "team": "Indiana Pacers"},
+        "6MOY":        {"name": "Lou Williams",             "team": "Los Angeles Clippers"},
+        "COY":         {"name": "Dwane Casey",              "team": "Toronto Raptors"},
+    },
+    "2016-17": {
+        "MVP":         {"name": "Russell Westbrook",        "team": "Oklahoma City Thunder"},
+        "Finals MVP":  {"name": "Kevin Durant",             "team": "Golden State Warriors"},
+        "DPOY":        {"name": "Draymond Green",           "team": "Golden State Warriors"},
+        "ROY":         {"name": "Malcolm Brogdon",          "team": "Milwaukee Bucks"},
+        "MIP":         {"name": "Giannis Antetokounmpo",   "team": "Milwaukee Bucks"},
+        "6MOY":        {"name": "Eric Gordon",              "team": "Houston Rockets"},
+        "COY":         {"name": "Mike D'Antoni",            "team": "Houston Rockets"},
+    },
+    "2015-16": {
+        "MVP":         {"name": "Stephen Curry",            "team": "Golden State Warriors"},
+        "Finals MVP":  {"name": "LeBron James",             "team": "Cleveland Cavaliers"},
+        "DPOY":        {"name": "Draymond Green",           "team": "Golden State Warriors"},
+        "ROY":         {"name": "Karl-Anthony Towns",       "team": "Minnesota Timberwolves"},
+        "MIP":         {"name": "C.J. McCollum",            "team": "Portland Trail Blazers"},
+        "6MOY":        {"name": "Jamal Crawford",           "team": "Los Angeles Clippers"},
+        "COY":         {"name": "Steve Kerr",               "team": "Golden State Warriors"},
+    },
+    "2014-15": {
+        "MVP":         {"name": "Stephen Curry",            "team": "Golden State Warriors"},
+        "Finals MVP":  {"name": "Andre Iguodala",           "team": "Golden State Warriors"},
+        "DPOY":        {"name": "Kawhi Leonard",            "team": "San Antonio Spurs"},
+        "ROY":         {"name": "Andrew Wiggins",           "team": "Minnesota Timberwolves"},
+        "MIP":         {"name": "Jimmy Butler",             "team": "Chicago Bulls"},
+        "6MOY":        {"name": "Lou Williams",             "team": "Toronto Raptors"},
+        "COY":         {"name": "Mike Budenholzer",         "team": "Atlanta Hawks"},
+    },
+    "2013-14": {
+        "MVP":         {"name": "Kevin Durant",             "team": "Oklahoma City Thunder"},
+        "Finals MVP":  {"name": "Kawhi Leonard",            "team": "San Antonio Spurs"},
+        "DPOY":        {"name": "Roy Hibbert",              "team": "Indiana Pacers"},
+        "ROY":         {"name": "Michael Carter-Williams",  "team": "Philadelphia 76ers"},
+        "MIP":         {"name": "Goran Dragic",             "team": "Phoenix Suns"},
+        "6MOY":        {"name": "Jamal Crawford",           "team": "Los Angeles Clippers"},
+        "COY":         {"name": "Gregg Popovich",           "team": "San Antonio Spurs"},
+    },
+    "2012-13": {
+        "MVP":         {"name": "LeBron James",             "team": "Miami Heat"},
+        "Finals MVP":  {"name": "LeBron James",             "team": "Miami Heat"},
+        "DPOY":        {"name": "Marc Gasol",               "team": "Memphis Grizzlies"},
+        "ROY":         {"name": "Damian Lillard",           "team": "Portland Trail Blazers"},
+        "MIP":         {"name": "Paul George",              "team": "Indiana Pacers"},
+        "6MOY":        {"name": "J.R. Smith",               "team": "New York Knicks"},
+        "COY":         {"name": "George Karl",              "team": "Denver Nuggets"},
+    },
+    "2011-12": {
+        "MVP":         {"name": "LeBron James",             "team": "Miami Heat"},
+        "Finals MVP":  {"name": "LeBron James",             "team": "Miami Heat"},
+        "DPOY":        {"name": "Tyson Chandler",           "team": "New York Knicks"},
+        "ROY":         {"name": "Kyrie Irving",             "team": "Cleveland Cavaliers"},
+        "MIP":         {"name": "Ryan Anderson",            "team": "New Orleans Hornets"},
+        "6MOY":        {"name": "James Harden",             "team": "Oklahoma City Thunder"},
+        "COY":         {"name": "Gregg Popovich",           "team": "San Antonio Spurs"},
+    },
+    "2010-11": {
+        "MVP":         {"name": "Derrick Rose",             "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "Dirk Nowitzki",            "team": "Dallas Mavericks"},
+        "DPOY":        {"name": "Dwight Howard",            "team": "Orlando Magic"},
+        "ROY":         {"name": "Blake Griffin",            "team": "Los Angeles Clippers"},
+        "MIP":         {"name": "Kevin Love",               "team": "Minnesota Timberwolves"},
+        "6MOY":        {"name": "Lamar Odom",               "team": "Los Angeles Lakers"},
+        "COY":         {"name": "Tom Thibodeau",            "team": "Chicago Bulls"},
+    },
+    "2009-10": {
+        "MVP":         {"name": "LeBron James",             "team": "Cleveland Cavaliers"},
+        "Finals MVP":  {"name": "Kobe Bryant",              "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Dwight Howard",            "team": "Orlando Magic"},
+        "ROY":         {"name": "Tyreke Evans",             "team": "Sacramento Kings"},
+        "MIP":         {"name": "Aaron Brooks",             "team": "Houston Rockets"},
+        "6MOY":        {"name": "Jamal Crawford",           "team": "Atlanta Hawks"},
+        "COY":         {"name": "Scott Brooks",             "team": "Oklahoma City Thunder"},
+    },
+    "2008-09": {
+        "MVP":         {"name": "LeBron James",             "team": "Cleveland Cavaliers"},
+        "Finals MVP":  {"name": "Kobe Bryant",              "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Dwight Howard",            "team": "Orlando Magic"},
+        "ROY":         {"name": "Derrick Rose",             "team": "Chicago Bulls"},
+        "MIP":         {"name": "Danny Granger",            "team": "Indiana Pacers"},
+        "6MOY":        {"name": "Jason Terry",              "team": "Dallas Mavericks"},
+        "COY":         {"name": "Mike Brown",               "team": "Cleveland Cavaliers"},
+    },
+    "2007-08": {
+        "MVP":         {"name": "Kobe Bryant",              "team": "Los Angeles Lakers"},
+        "Finals MVP":  {"name": "Paul Pierce",              "team": "Boston Celtics"},
+        "DPOY":        {"name": "Kevin Garnett",            "team": "Boston Celtics"},
+        "ROY":         {"name": "Kevin Durant",             "team": "Seattle SuperSonics"},
+        "MIP":         {"name": "Hedo Turkoglu",            "team": "Orlando Magic"},
+        "6MOY":        {"name": "Manu Ginobili",            "team": "San Antonio Spurs"},
+        "COY":         {"name": "Byron Scott",              "team": "New Orleans Hornets"},
+    },
+    "2006-07": {
+        "MVP":         {"name": "Dirk Nowitzki",            "team": "Dallas Mavericks"},
+        "Finals MVP":  {"name": "Tony Parker",              "team": "San Antonio Spurs"},
+        "DPOY":        {"name": "Marcus Camby",             "team": "Denver Nuggets"},
+        "ROY":         {"name": "Brandon Roy",              "team": "Portland Trail Blazers"},
+        "MIP":         {"name": "Monta Ellis",              "team": "Golden State Warriors"},
+        "6MOY":        {"name": "Leandro Barbosa",          "team": "Phoenix Suns"},
+        "COY":         {"name": "Sam Mitchell",             "team": "Toronto Raptors"},
+    },
+    "2005-06": {
+        "MVP":         {"name": "Steve Nash",               "team": "Phoenix Suns"},
+        "Finals MVP":  {"name": "Dwyane Wade",              "team": "Miami Heat"},
+        "DPOY":        {"name": "Ben Wallace",              "team": "Detroit Pistons"},
+        "ROY":         {"name": "Andrew Bogut",             "team": "Milwaukee Bucks"},
+        "MIP":         {"name": "Boris Diaw",               "team": "Phoenix Suns"},
+        "6MOY":        {"name": "Mike Miller",              "team": "Memphis Grizzlies"},
+        "COY":         {"name": "Avery Johnson",            "team": "Dallas Mavericks"},
+    },
+    "2004-05": {
+        "MVP":         {"name": "Steve Nash",               "team": "Phoenix Suns"},
+        "Finals MVP":  {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "DPOY":        {"name": "Ben Wallace",              "team": "Detroit Pistons"},
+        "ROY":         {"name": "Emeka Okafor",             "team": "Charlotte Bobcats"},
+        "MIP":         {"name": "Bobby Simmons",            "team": "Los Angeles Clippers"},
+        "6MOY":        {"name": "Ben Gordon",               "team": "Chicago Bulls"},
+        "COY":         {"name": "Mike D'Antoni",            "team": "Phoenix Suns"},
+    },
+    "2003-04": {
+        "MVP":         {"name": "Kevin Garnett",            "team": "Minnesota Timberwolves"},
+        "Finals MVP":  {"name": "Chauncey Billups",         "team": "Detroit Pistons"},
+        "DPOY":        {"name": "Ron Artest",               "team": "Indiana Pacers"},
+        "ROY":         {"name": "LeBron James",             "team": "Cleveland Cavaliers"},
+        "MIP":         {"name": "Zach Randolph",            "team": "Portland Trail Blazers"},
+        "6MOY":        {"name": "Antawn Jamison",           "team": "Dallas Mavericks"},
+        "COY":         {"name": "Hubie Brown",              "team": "Memphis Grizzlies"},
+    },
+    "2002-03": {
+        "MVP":         {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "Finals MVP":  {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "DPOY":        {"name": "Ben Wallace",              "team": "Detroit Pistons"},
+        "ROY":         {"name": "Amare Stoudemire",         "team": "Phoenix Suns"},
+        "MIP":         {"name": "Gilbert Arenas",           "team": "Golden State Warriors"},
+        "6MOY":        {"name": "Bobby Jackson",            "team": "Sacramento Kings"},
+        "COY":         {"name": "Gregg Popovich",           "team": "San Antonio Spurs"},
+    },
+    "2001-02": {
+        "MVP":         {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "Finals MVP":  {"name": "Shaquille O'Neal",         "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Ben Wallace",              "team": "Detroit Pistons"},
+        "ROY":         {"name": "Pau Gasol",                "team": "Memphis Grizzlies"},
+        "MIP":         {"name": "Jalen Rose",               "team": "Chicago Bulls"},
+        "6MOY":        {"name": "Rodney Rogers",            "team": "New Jersey Nets"},
+        "COY":         {"name": "Byron Scott",              "team": "New Jersey Nets"},
+    },
+    "2000-01": {
+        "MVP":         {"name": "Allen Iverson",            "team": "Philadelphia 76ers"},
+        "Finals MVP":  {"name": "Shaquille O'Neal",         "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Dikembe Mutombo",          "team": "Philadelphia 76ers"},
+        "ROY":         {"name": "Mike Miller",              "team": "Orlando Magic"},
+        "MIP":         {"name": "Tracy McGrady",            "team": "Orlando Magic"},
+        "6MOY":        {"name": "Aaron McKie",              "team": "Philadelphia 76ers"},
+        "COY":         {"name": "Larry Brown",              "team": "Philadelphia 76ers"},
+    },
+    "1999-00": {
+        "MVP":         {"name": "Shaquille O'Neal",         "team": "Los Angeles Lakers"},
+        "Finals MVP":  {"name": "Shaquille O'Neal",         "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Alonzo Mourning",          "team": "Miami Heat"},
+        "ROY":         {"name": "Elton Brand",              "team": "Chicago Bulls"},
+        "MIP":         {"name": "Jalen Rose",               "team": "Indiana Pacers"},
+        "6MOY":        {"name": "Rodney Rogers",            "team": "Phoenix Suns"},
+        "COY":         {"name": "Doc Rivers",               "team": "Orlando Magic"},
+    },
+    "1998-99": {
+        "MVP":         {"name": "Karl Malone",              "team": "Utah Jazz"},
+        "Finals MVP":  {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "DPOY":        {"name": "Alonzo Mourning",          "team": "Miami Heat"},
+        "ROY":         {"name": "Vince Carter",             "team": "Toronto Raptors"},
+        "MIP":         {"name": "Darrell Armstrong",        "team": "Orlando Magic"},
+        "6MOY":        {"name": "Darrell Armstrong",        "team": "Orlando Magic"},
+        "COY":         {"name": "Mike Dunleavy Sr.",        "team": "Portland Trail Blazers"},
+    },
+    "1997-98": {
+        "MVP":         {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "Dikembe Mutombo",          "team": "Atlanta Hawks"},
+        "ROY":         {"name": "Tim Duncan",               "team": "San Antonio Spurs"},
+        "MIP":         {"name": "Alan Henderson",           "team": "Atlanta Hawks"},
+        "6MOY":        {"name": "Danny Manning",            "team": "Phoenix Suns"},
+        "COY":         {"name": "Larry Bird",               "team": "Indiana Pacers"},
+    },
+    "1996-97": {
+        "MVP":         {"name": "Karl Malone",              "team": "Utah Jazz"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "Dikembe Mutombo",          "team": "Atlanta Hawks"},
+        "ROY":         {"name": "Allen Iverson",            "team": "Philadelphia 76ers"},
+        "MIP":         {"name": "Isaac Austin",             "team": "Miami Heat"},
+        "6MOY":        {"name": "John Starks",              "team": "New York Knicks"},
+        "COY":         {"name": "Pat Riley",                "team": "Miami Heat"},
+    },
+    "1995-96": {
+        "MVP":         {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "Gary Payton",              "team": "Seattle SuperSonics"},
+        "ROY":         {"name": "Damon Stoudamire",         "team": "Toronto Raptors"},
+        "MIP":         {"name": "Gheorghe Muresan",         "team": "Washington Bullets"},
+        "6MOY":        {"name": "Toni Kukoc",               "team": "Chicago Bulls"},
+        "COY":         {"name": "Phil Jackson",             "team": "Chicago Bulls"},
+    },
+    "1994-95": {
+        "MVP":         {"name": "David Robinson",           "team": "San Antonio Spurs"},
+        "Finals MVP":  {"name": "Hakeem Olajuwon",          "team": "Houston Rockets"},
+        "DPOY":        {"name": "David Robinson",           "team": "San Antonio Spurs"},
+        "ROY":         {"name": "Jason Kidd",               "team": "Dallas Mavericks"},
+        "MIP":         {"name": "Dana Barros",              "team": "Philadelphia 76ers"},
+        "6MOY":        {"name": "Anthony Mason",            "team": "New York Knicks"},
+        "COY":         {"name": "Del Harris",               "team": "Los Angeles Lakers"},
+    },
+    "1993-94": {
+        "MVP":         {"name": "Hakeem Olajuwon",          "team": "Houston Rockets"},
+        "Finals MVP":  {"name": "Hakeem Olajuwon",          "team": "Houston Rockets"},
+        "DPOY":        {"name": "Hakeem Olajuwon",          "team": "Houston Rockets"},
+        "ROY":         {"name": "Chris Webber",             "team": "Golden State Warriors"},
+        "MIP":         {"name": "Don MacLean",              "team": "Washington Bullets"},
+        "6MOY":        {"name": "Dell Curry",               "team": "Charlotte Hornets"},
+        "COY":         {"name": "Lenny Wilkens",            "team": "Atlanta Hawks"},
+    },
+    "1992-93": {
+        "MVP":         {"name": "Charles Barkley",          "team": "Phoenix Suns"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "Hakeem Olajuwon",          "team": "Houston Rockets"},
+        "ROY":         {"name": "Shaquille O'Neal",         "team": "Orlando Magic"},
+        "MIP":         {"name": "Mahmoud Abdul-Rauf",       "team": "Denver Nuggets"},
+        "6MOY":        {"name": "Cliff Robinson",           "team": "Portland Trail Blazers"},
+        "COY":         {"name": "Pat Riley",                "team": "New York Knicks"},
+    },
+    "1991-92": {
+        "MVP":         {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "David Robinson",           "team": "San Antonio Spurs"},
+        "ROY":         {"name": "Larry Johnson",            "team": "Charlotte Hornets"},
+        "MIP":         {"name": "Pervis Ellison",           "team": "Washington Bullets"},
+        "6MOY":        {"name": "Detlef Schrempf",          "team": "Indiana Pacers"},
+        "COY":         {"name": "Don Nelson",               "team": "Golden State Warriors"},
+    },
+    "1990-91": {
+        "MVP":         {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "DPOY":        {"name": "Dennis Rodman",            "team": "Detroit Pistons"},
+        "ROY":         {"name": "Dee Brown",                "team": "Boston Celtics"},
+        "MIP":         {"name": "Scott Skiles",             "team": "Orlando Magic"},
+        "6MOY":        {"name": "Detlef Schrempf",          "team": "Indiana Pacers"},
+        "COY":         {"name": "Don Chaney",               "team": "Houston Rockets"},
+    },
+    "1989-90": {
+        "MVP":         {"name": "Magic Johnson",            "team": "Los Angeles Lakers"},
+        "Finals MVP":  {"name": "Isiah Thomas",             "team": "Detroit Pistons"},
+        "DPOY":        {"name": "Dennis Rodman",            "team": "Detroit Pistons"},
+        "ROY":         {"name": "David Robinson",           "team": "San Antonio Spurs"},
+        "MIP":         {"name": "Rony Seikaly",             "team": "Miami Heat"},
+        "6MOY":        {"name": "Ricky Pierce",             "team": "Milwaukee Bucks"},
+        "COY":         {"name": "Pat Riley",                "team": "Los Angeles Lakers"},
+    },
+    "1988-89": {
+        "MVP":         {"name": "Magic Johnson",            "team": "Los Angeles Lakers"},
+        "Finals MVP":  {"name": "Joe Dumars",               "team": "Detroit Pistons"},
+        "DPOY":        {"name": "Mark Eaton",               "team": "Utah Jazz"},
+        "ROY":         {"name": "Mitch Richmond",           "team": "Golden State Warriors"},
+        "MIP":         {"name": "Kevin Johnson",            "team": "Phoenix Suns"},
+        "6MOY":        {"name": "Eddie Johnson",            "team": "Phoenix Suns"},
+        "COY":         {"name": "Cotton Fitzsimmons",       "team": "Phoenix Suns"},
+    },
+    "1987-88": {
+        "MVP":         {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "Finals MVP":  {"name": "James Worthy",             "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Michael Jordan",           "team": "Chicago Bulls"},
+        "ROY":         {"name": "Mark Jackson",             "team": "New York Knicks"},
+        "MIP":         {"name": "Kevin Duckworth",          "team": "Portland Trail Blazers"},
+        "6MOY":        {"name": "Roy Tarpley",              "team": "Dallas Mavericks"},
+        "COY":         {"name": "Doug Moe",                 "team": "Denver Nuggets"},
+    },
+    "1986-87": {
+        "MVP":         {"name": "Magic Johnson",            "team": "Los Angeles Lakers"},
+        "Finals MVP":  {"name": "Magic Johnson",            "team": "Los Angeles Lakers"},
+        "DPOY":        {"name": "Michael Cooper",           "team": "Los Angeles Lakers"},
+        "ROY":         {"name": "Chuck Person",             "team": "Indiana Pacers"},
+        "MIP":         {"name": "Dale Ellis",               "team": "Seattle SuperSonics"},
+        "6MOY":        {"name": "Ricky Pierce",             "team": "Milwaukee Bucks"},
+        "COY":         {"name": "Mike Schuler",             "team": "Portland Trail Blazers"},
+    },
+    "1985-86": {
+        "MVP":         {"name": "Larry Bird",               "team": "Boston Celtics"},
+        "Finals MVP":  {"name": "Larry Bird",               "team": "Boston Celtics"},
+        "DPOY":        {"name": "Alvin Robertson",          "team": "San Antonio Spurs"},
+        "ROY":         {"name": "Patrick Ewing",            "team": "New York Knicks"},
+        "MIP":         {"name": "Alvin Robertson",          "team": "San Antonio Spurs"},
+        "6MOY":        {"name": "Bill Walton",              "team": "Boston Celtics"},
+        "COY":         {"name": "Mike Fratello",            "team": "Atlanta Hawks"},
+    },
+}
+
+AWARD_LABELS = {
+    "MVP":        "Most Valuable Player",
+    "Finals MVP": "Finals MVP",
+    "DPOY":       "Defensive Player of the Year",
+    "ROY":        "Rookie of the Year",
+    "MIP":        "Most Improved Player",
+    "6MOY":       "Sixth Man of the Year",
+    "COY":        "Coach of the Year",
+}
+
+AWARD_ORDER = ["MVP", "Finals MVP", "DPOY", "ROY", "MIP", "6MOY", "COY"]
 
 # pre-populate data
 ALL_PLAYERS = players.get_players()
@@ -699,6 +1075,198 @@ def draftPage():
 
     # returned parsed, sorted, and cleaned data
     return render_template("draft.html", available_years=availableYears, selected_year=selectedYear, draft_data=draftData)
+
+# route to awards page
+@app.route("/awards")
+def awardsPage():
+    available_seasons = sorted(AWARDS_BY_SEASON.keys(), reverse=True)
+    default_season = available_seasons[0] if available_seasons else "2024-25"
+    selected_season = request.args.get("season", default_season)
+    if selected_season not in AWARDS_BY_SEASON:
+        selected_season = default_season
+
+    awards = AWARDS_BY_SEASON.get(selected_season, {})
+
+    award_list = []
+    for key in AWARD_ORDER:
+        if key in awards:
+            name = awards[key]["name"]
+            team = awards[key]["team"]
+
+            headshot_url = None
+            found = players.find_players_by_full_name(name)
+            if found:
+                player_id = found[0]["id"]
+                headshot_url = f"https://cdn.nba.com/headshots/nba/latest/260x190/{player_id}.png"
+
+            award_list.append({
+                "key": key,
+                "label": AWARD_LABELS.get(key, key),
+                "name": name,
+                "team": team,
+                "headshot_url": headshot_url,
+            })
+
+    return render_template(
+        "awards.html",
+        award_list=award_list,
+        selected_season=selected_season,
+        available_seasons=available_seasons,
+    )
+
+
+# route to playoffs bracket page
+@app.route("/playoffs")
+def playoffsPage():
+    current_year = datetime.now().year
+    available_seasons = []
+    for year in range(current_year - 1, 1995, -1):
+        available_seasons.append(f"{year}-{str(year + 1)[-2:]}")
+
+    default_season = available_seasons[0]
+    selected_season = request.args.get("season", default_season)
+    if selected_season not in available_seasons:
+        selected_season = default_season
+
+    if selected_season in playoffs_cache:
+        return render_template(
+            "playoffs.html",
+            rounds=playoffs_cache[selected_season],
+            selected_season=selected_season,
+            available_seasons=available_seasons,
+            error=None
+        )
+
+    rounds = []
+    error = None
+    try:
+        series_resp = commonplayoffseries.CommonPlayoffSeries(season=selected_season).get_dict()
+        series_rows = series_resp["resultSets"][0]["rowSet"]
+
+        if not series_rows:
+            error = "No playoff data available for this season yet."
+        else:
+            log_resp = leaguegamelog.LeagueGameLog(
+                season=selected_season,
+                season_type_all_star="Playoffs",
+                league_id="00"
+            ).get_dict()
+
+            game_rows = []
+            for rs in log_resp.get("resultSets", []):
+                if rs["name"] == "LeagueGameLog":
+                    hdrs = rs["headers"]
+                    for row in rs["rowSet"]:
+                        game_rows.append(dict(zip(hdrs, row)))
+                    break
+
+            game_scores = {}
+            for row in game_rows:
+                gid = row["GAME_ID"]
+                if gid not in game_scores:
+                    game_scores[gid] = {}
+                game_scores[gid][row["TEAM_ID"]] = {
+                    "pts": row["PTS"],
+                    "wl": row["WL"],
+                    "name": row["TEAM_NAME"],
+                    "abbr": row["TEAM_ABBREVIATION"]
+                }
+
+            series_map = {}
+            for row in series_rows:
+                game_id, home_id, visitor_id, series_id, game_num = row
+                if series_id not in series_map:
+                    series_map[series_id] = {"home_id": home_id, "visitor_id": visitor_id, "game_ids": []}
+                series_map[series_id]["game_ids"].append(game_id)
+
+            rounds_map = {}
+            for sid, info in series_map.items():
+                round_num = int(sid[7])
+                series_num = int(sid[8])
+                if round_num not in rounds_map:
+                    rounds_map[round_num] = {}
+
+                home_id = info["home_id"]
+                visitor_id = info["visitor_id"]
+
+                home_name = home_abbr = ""
+                visitor_name = visitor_abbr = ""
+                for gid in info["game_ids"]:
+                    if gid in game_scores:
+                        gs = game_scores[gid]
+                        if home_id in gs:
+                            home_name = gs[home_id]["name"]
+                            home_abbr = gs[home_id]["abbr"]
+                        if visitor_id in gs:
+                            visitor_name = gs[visitor_id]["name"]
+                            visitor_abbr = gs[visitor_id]["abbr"]
+                        if home_name and visitor_name:
+                            break
+
+                home_wins = visitor_wins = 0
+                games_list = []
+                for gid in sorted(info["game_ids"]):
+                    if gid in game_scores:
+                        gs = game_scores[gid]
+                        if home_id in gs and visitor_id in gs:
+                            h = gs[home_id]
+                            v = gs[visitor_id]
+                            home_win = h["wl"] == "W"
+                            if home_win:
+                                home_wins += 1
+                            else:
+                                visitor_wins += 1
+                            games_list.append({
+                                "home_pts": h["pts"],
+                                "visitor_pts": v["pts"],
+                                "home_win": home_win
+                            })
+
+                winner_id = None
+                if home_wins > visitor_wins:
+                    winner_id = home_id
+                elif visitor_wins > home_wins:
+                    winner_id = visitor_id
+
+                rounds_map[round_num][series_num] = {
+                    "home": {
+                        "id": home_id, "name": home_name, "abbr": home_abbr,
+                        "wins": home_wins,
+                        "logo": f"https://cdn.nba.com/logos/nba/{home_id}/global/L/logo.svg"
+                    },
+                    "visitor": {
+                        "id": visitor_id, "name": visitor_name, "abbr": visitor_abbr,
+                        "wins": visitor_wins,
+                        "logo": f"https://cdn.nba.com/logos/nba/{visitor_id}/global/L/logo.svg"
+                    },
+                    "total_games": len(info["game_ids"]),
+                    "winner_id": winner_id,
+                    "games": games_list
+                }
+
+            round_names = {
+                1: "First Round",
+                2: "Conf. Semifinals",
+                3: "Conf. Finals",
+                4: "NBA Finals"
+            }
+            for rnum in sorted(rounds_map.keys()):
+                series_list = [rounds_map[rnum][s] for s in sorted(rounds_map[rnum].keys())]
+                rounds.append({"name": round_names.get(rnum, f"Round {rnum}"), "number": rnum, "series": series_list})
+
+            playoffs_cache[selected_season] = rounds
+
+    except Exception:
+        error = "Could not load playoff data. Please try again."
+
+    return render_template(
+        "playoffs.html",
+        rounds=rounds,
+        selected_season=selected_season,
+        available_seasons=available_seasons,
+        error=error
+    )
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
