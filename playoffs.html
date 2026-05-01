@@ -1,0 +1,154 @@
+{% macro series_card(s) %}
+<div class="series-matchup">
+    <div class="series-team{% if s.winner_id and s.winner_id == s.home.id %} team-won{% endif %}">
+        <img class="bracket-logo" src="{{ s.home.logo }}" alt="{{ s.home.abbr }}" onerror="this.style.display='none'">
+        <span class="bracket-name">{{ s.home.name }}</span>
+        <span class="bracket-wins{% if s.winner_id and s.winner_id == s.home.id %} wins-active{% endif %}">{{ s.home.wins }}</span>
+    </div>
+    <div class="series-team{% if s.winner_id and s.winner_id == s.visitor.id %} team-won{% endif %}">
+        <img class="bracket-logo" src="{{ s.visitor.logo }}" alt="{{ s.visitor.abbr }}" onerror="this.style.display='none'">
+        <span class="bracket-name">{{ s.visitor.name }}</span>
+        <span class="bracket-wins{% if s.winner_id and s.winner_id == s.visitor.id %} wins-active{% endif %}">{{ s.visitor.wins }}</span>
+    </div>
+    {% if s.games %}
+    <div class="games-tooltip">
+        <div class="tooltip-header">{{ s.total_games }}-Game Series</div>
+        {% for g in s.games %}
+        <div class="tooltip-game">
+            <span class="tg-num">G{{ loop.index }}</span>
+            <span class="tg-score{% if g.home_win %} tg-win{% endif %}">{{ s.home.abbr }} {{ g.home_pts }}</span>
+            <span class="tg-sep"> – </span>
+            <span class="tg-score{% if not g.home_win %} tg-win{% endif %}">{{ g.visitor_pts }} {{ s.visitor.abbr }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NBA Playoffs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app">
+    <main class="main-content">
+        <div class="search-section">
+            <a href="{{ url_for('index') }}" class="back-link top-back">← Back</a>
+            <h1>NBA Playoffs Bracket</h1>
+
+            <form method="GET" action="{{ url_for('playoffsPage') }}" class="season-selector-form">
+                <label for="season-select" class="season-selector-label">Season</label>
+                <select id="season-select" name="season" class="season-selector" onchange="this.form.submit()">
+                    {% for s in available_seasons %}
+                        <option value="{{ s }}" {% if s == selected_season %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <p class="results-label">{{ selected_season }} Playoffs</p>
+        </div>
+
+        {% if error %}
+            <p class="bracket-message">{{ error }}</p>
+        {% elif not rounds %}
+            <p class="bracket-message">No playoff data available for this season yet.</p>
+        {% else %}
+            {% set r1 = rounds[0] if rounds else none %}
+            {% set r2 = rounds[1] if rounds|length > 1 else none %}
+            {% set r3 = rounds[2] if rounds|length > 2 else none %}
+            {% set r4 = rounds[3] if rounds|length > 3 else none %}
+
+            <div class="bracket-outer">
+                <!-- Conference Labels Row -->
+                <div class="conf-labels-row">
+                    <div class="conf-label-span east-span">Eastern Conference</div>
+                    <div class="conf-label-span finals-gap"></div>
+                    <div class="conf-label-span west-span">Western Conference</div>
+                </div>
+
+                <!-- Bracket columns -->
+                <div class="bracket-wrapper">
+
+                    <!-- East R1 -->
+                    <div class="bracket-col">
+                        <div class="col-label">First Round</div>
+                        <div class="col-series">
+                            {% if r1 %}
+                                {% for s in r1.series[:4] %}{{ series_card(s) }}{% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- East Semis -->
+                    <div class="bracket-col">
+                        <div class="col-label">Conf. Semis</div>
+                        <div class="col-series">
+                            {% if r2 %}
+                                {% for s in r2.series[:2] %}{{ series_card(s) }}{% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- East Finals -->
+                    <div class="bracket-col">
+                        <div class="col-label">Conf. Finals</div>
+                        <div class="col-series">
+                            {% if r3 and r3.series|length > 0 %}
+                                {{ series_card(r3.series[0]) }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- NBA Finals -->
+                    <div class="bracket-col finals-col">
+                        <div class="col-label finals-col-label">NBA Finals</div>
+                        <div class="col-series">
+                            {% if r4 and r4.series|length > 0 %}
+                                {{ series_card(r4.series[0]) }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- West Finals -->
+                    <div class="bracket-col">
+                        <div class="col-label">Conf. Finals</div>
+                        <div class="col-series">
+                            {% if r3 and r3.series|length > 1 %}
+                                {{ series_card(r3.series[1]) }}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- West Semis -->
+                    <div class="bracket-col">
+                        <div class="col-label">Conf. Semis</div>
+                        <div class="col-series">
+                            {% if r2 and r2.series|length > 2 %}
+                                {% for s in r2.series[2:4] %}{{ series_card(s) }}{% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- West R1 -->
+                    <div class="bracket-col">
+                        <div class="col-label">First Round</div>
+                        <div class="col-series">
+                            {% if r1 and r1.series|length > 4 %}
+                                {% for s in r1.series[4:] %}{{ series_card(s) }}{% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div><!-- /bracket-wrapper -->
+            </div><!-- /bracket-outer -->
+        {% endif %}
+
+    </main>
+</div>
+</body>
+</html>
