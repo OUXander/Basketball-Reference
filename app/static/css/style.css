@@ -560,3 +560,302 @@ body {
         text-align: center;
     }
 }
+
+/* ── Season selector (shared by awards, playoffs, draft) ───────────── */
+.season-selector-form {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0 6px;
+}
+
+.season-selector-label {
+    color: #9ca3af;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.season-selector {
+    background-color: #1d1d1d;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #e5e7eb;
+    font-size: 15px;
+    padding: 8px 14px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.season-selector:hover,
+.season-selector:focus {
+    border-color: #4a4a4a;
+}
+
+/* ── Awards page ───────────────────────────────────────────────────── */
+.awards-grid {
+    width: 100%;
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+    margin-top: 10px;
+    text-align: left;
+}
+
+.award-card {
+    background-color: #1d1d1d;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.2s ease;
+}
+
+.award-card:hover {
+    border-color: #4a4a4a;
+}
+
+.award-headshot {
+    width: 68px;
+    height: 68px;
+    object-fit: cover;
+    object-position: top center;
+    border-radius: 50%;
+    background-color: #2a2a2a;
+    flex-shrink: 0;
+}
+
+.award-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.award-card-label {
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.award-winner-name {
+    color: #f3f4f6;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.2s ease;
+}
+
+.award-winner-name:hover {
+    color: white;
+    text-decoration: underline;
+}
+
+.award-winner-team {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* ── Playoffs bracket ──────────────────────────────────────────────── */
+.bracket-outer {
+    width: 100%;
+    max-width: 1400px;
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.conf-labels-row {
+    display: flex;
+    min-width: 900px;
+    margin-bottom: 6px;
+}
+
+.conf-label-span {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.east-span  { flex: 3; }
+.finals-gap { flex: 1; }
+.west-span  { flex: 3; }
+
+.bracket-wrapper {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 900px;
+    height: 680px;
+}
+
+.bracket-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.col-label {
+    text-align: center;
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.finals-col-label {
+    color: #c9a84c;
+}
+
+.col-series {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+
+.finals-col .col-series {
+    justify-content: center;
+}
+
+.series-matchup {
+    background-color: #1d1d1d;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 10px 12px;
+    position: relative;
+    cursor: default;
+    transition: border-color 0.2s ease;
+}
+
+.series-matchup:hover {
+    border-color: #4a4a4a;
+    z-index: 10;
+}
+
+.series-matchup:hover .games-tooltip {
+    display: block;
+}
+
+.series-team {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+}
+
+.series-team + .series-team {
+    border-top: 1px solid #2a2a2a;
+}
+
+/* Dim the losing team only when a winner is determined */
+.series-matchup:has(.team-won) .series-team:not(.team-won) {
+    opacity: 0.4;
+}
+
+.bracket-logo {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.bracket-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 500;
+    color: #e5e7eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bracket-wins {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b7280;
+    min-width: 14px;
+    text-align: right;
+}
+
+.wins-active {
+    color: #f3f4f6;
+}
+
+/* Game-by-game tooltip */
+.games-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    z-index: 100;
+    width: max-content;
+    min-width: 190px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.tooltip-header {
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.tooltip-game {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #333;
+}
+
+.tooltip-game:last-child {
+    border-bottom: none;
+}
+
+.tg-num {
+    color: #6b7280;
+    font-size: 11px;
+    width: 18px;
+}
+
+.tg-score {
+    color: #9ca3af;
+    font-size: 12px;
+    flex: 1;
+}
+
+.tg-win {
+    color: #f3f4f6;
+    font-weight: 600;
+}
+
+.tg-sep {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.bracket-message {
+    color: #9ca3af;
+    font-size: 16px;
+    margin-top: 24px;
+}
