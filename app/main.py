@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, jsonify, Response, send_from_
 from urllib.parse import unquote
 import os
 from datetime import datetime, timedelta
-from matplotlib.figure import Figure
 import io
 
 # set up app
@@ -700,41 +699,6 @@ def draftPage():
 
     # returned parsed, sorted, and cleaned data
     return render_template("draft.html", available_years=availableYears, selected_year=selectedYear, draft_data=draftData)
-
-# return points per game vs rebounds per game for given player id
-@app.route("/api/ppg_rpg_<playerId>.png")
-def getPointVsReboundChart(playerId):
-
-    # check if given id is valid
-    playerInfo = players.find_player_by_id(playerId)
-    if not playerInfo:
-         return jsonify({"error": "Player not found"}), 404
-   
-    # get data
-    career = playercareerstats.PlayerCareerStats(playerId)
-    df = career.get_data_frames()[0]
-
-    # prepare plot
-    fig = Figure(figsize = (10, 6))
-    ax = fig.add_subplot(1, 1, 1)
-
-    # plot data
-    ax.plot(df["SEASON_ID"], df["PTS"] / df["GP"], label = "Points")
-    ax.plot(df["SEASON_ID"], df["REB"] / df["GP"], label = "Rebounds")
-
-    # add labels
-    ax.set_title(playerInfo["full_name"] + " PPG vs RPG")
-    ax.set_xlabel("Season")
-    ax.set_ylabel("Average")
-    ax.tick_params(rotation = 45)
-    ax.legend()
-    ax.grid(True)
-    fig.tight_layout()
-
-    # return chart
-    output = io.BytesIO()
-    fig.savefig(output, format = "png")
-    return Response(output.getvalue(), mimetype= "image/png")
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
